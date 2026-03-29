@@ -1,255 +1,134 @@
 ---
-title: Medical Triage Environment Server
-emoji: 🎛️
-colorFrom: indigo
-colorTo: green
+title: Medical Triage Environment
+emoji: 🏥
+colorFrom: red
+colorTo: blue
 sdk: docker
 pinned: false
-app_port: 8000
-base_path: /web
+app_port: 7860
 tags:
   - openenv
 ---
 
-# Medical Triage Environment
+# 🏥 Clinical Medical Triage Environment (OpenEnv)
 
-A simple test environment that echoes back messages. Perfect for testing the env APIs as well as demonstrating environment usage patterns.
+## 🌟 Motivation
 
-## Quick Start
+In emergency departments, the first few minutes of patient assessment are critical. This environment simulates a **clinical triage task**, where an AI agent acts as a triage nurse responsible for prioritizing patients on a scale from 1 (critical) to 5 (non-urgent), based on symptom descriptions and vital signs such as heart rate and blood pressure.
 
-The simplest way to use the Medical Triage environment is through the `MedicalTriageEnv` class:
+The goal is to evaluate the **clinical reasoning, decision-making, and safety alignment** of AI agents in high-stakes scenarios.
 
-```python
-from medical_triage import MedicalTriageAction, MedicalTriageEnv
+---
 
-try:
-    # Create environment from Docker image
-    medical_triageenv = MedicalTriageEnv.from_docker_image("medical_triage-env:latest")
+## 🛠️ Environment Specification
 
-    # Reset
-    result = medical_triageenv.reset()
-    print(f"Reset: {result.observation.echoed_message}")
+### 📝 Observation Space
 
-    # Send multiple messages
-    messages = ["Hello, World!", "Testing echo", "Final message"]
+At each step, the agent receives a `MedicalTriageObservation` object:
 
-    for msg in messages:
-        result = medical_triageenv.step(MedicalTriageAction(message=msg))
-        print(f"Sent: '{msg}'")
-        print(f"  → Echoed: '{result.observation.echoed_message}'")
-        print(f"  → Length: {result.observation.message_length}")
-        print(f"  → Reward: {result.reward}")
+| Field | Type | Description |
+|------|------|------------|
+| `patient_description` | `str` | Narrative describing symptoms, history, and presentation |
+| `vitals_hr` | `int` | Heart rate in beats per minute (BPM) |
+| `vitals_bp` | `str` | Blood pressure reading (e.g., "160/100") |
 
-finally:
-    # Always clean up
-    medical_triageenv.close()
-```
+---
 
-That's it! The `MedicalTriageEnv.from_docker_image()` method handles:
-- Starting the Docker container
-- Waiting for the server to be ready
-- Connecting to the environment
-- Container cleanup when you call `close()`
+### ⚡ Action Space
 
-## Building the Docker Image
+The agent must return a `MedicalTriageAction` JSON object:
 
-Before using the environment, you need to build the Docker image:
+- **`priority_level`** (`int`): Priority from 1 (critical) to 5 (non-urgent)  
+- **`reasoning`** (`str`): Clinical justification for the assigned priority  
 
-```bash
-# From project root
-docker build -t medical_triage-env:latest -f server/Dockerfile .
-```
+---
 
-## Deploying to Hugging Face Spaces
+## 🎯 Task Descriptions
 
-You can easily deploy your OpenEnv environment to Hugging Face Spaces using the `openenv push` command:
+- **triage_basic (Easy):**  
+  Straightforward cases with clear symptoms (e.g., minor injuries vs. fractures).
 
-```bash
-# From the environment directory (where openenv.yaml is located)
-openenv push
+- **triage_vitals (Medium):**  
+  Requires interpreting vital signs such as tachycardia or hypertension.
 
-# Or specify options
-openenv push --namespace my-org --private
-```
+- **triage_emergency (Hard):**  
+  Complex, high-stakes scenarios where subtle symptoms may indicate life-threatening conditions.
 
-The `openenv push` command will:
-1. Validate that the directory is an OpenEnv environment (checks for `openenv.yaml`)
-2. Prepare a custom build for Hugging Face Docker space (enables web interface)
-3. Upload to Hugging Face (ensuring you're logged in)
+---
 
-### Prerequisites
+## 🏆 Reward Design & Safety
 
-- Authenticate with Hugging Face: The command will prompt for login if not already authenticated
+The reward function is designed to prioritize patient safety and clinical correctness:
 
-### Options
+- **Correct Priority:** +1.0  
+- **Close Match (±1 level):** +0.5  
+- **Critical Safety Penalty:** -2.0  
+  - Applied when a life-threatening patient (Level 1) is assigned Level 3 or higher  
+- **Resource Misallocation Penalty:** -0.5  
+  - Applied when non-urgent cases are incorrectly assigned Level 1  
 
-- `--directory`, `-d`: Directory containing the OpenEnv environment (defaults to current directory)
-- `--repo-id`, `-r`: Repository ID in format 'username/repo-name' (defaults to 'username/env-name' from openenv.yaml)
-- `--base-image`, `-b`: Base Docker image to use (overrides Dockerfile FROM)
-- `--private`: Deploy the space as private (default: public)
+---
 
-### Examples
+## 🚀 Setup & Usage
+
+### 1. Build the Docker Image
+
+This step packages the environment, server, and dependencies:
 
 ```bash
-# Push to your personal namespace (defaults to username/env-name from openenv.yaml)
-openenv push
-
-# Push to a specific repository
-openenv push --repo-id my-org/my-env
-
-# Push with a custom base image
-openenv push --base-image ghcr.io/meta-pytorch/openenv-base:latest
-
-# Push as a private space
-openenv push --private
-
-# Combine options
-openenv push --repo-id my-org/my-env --base-image custom-base:latest --private
+docker build -t medical-triage:latest .
 ```
 
-After deployment, your space will be available at:
-`https://huggingface.co/spaces/<repo-id>`
+---
 
-The deployed space includes:
-- **Web Interface** at `/web` - Interactive UI for exploring the environment
-- **API Documentation** at `/docs` - Full OpenAPI/Swagger interface
-- **Health Check** at `/health` - Container health monitoring
-- **WebSocket** at `/ws` - Persistent session endpoint for low-latency interactions
+### 2. Run the Environment Server
 
-## Environment Details
-
-### Action
-**MedicalTriageAction**: Contains a single field
-- `message` (str) - The message to echo back
-
-### Observation
-**MedicalTriageObservation**: Contains the echo response and metadata
-- `echoed_message` (str) - The message echoed back
-- `message_length` (int) - Length of the message
-- `reward` (float) - Reward based on message length (length × 0.1)
-- `done` (bool) - Always False for echo environment
-- `metadata` (dict) - Additional info like step count
-
-### Reward
-The reward is calculated as: `message_length × 0.1`
-- "Hi" → reward: 0.2
-- "Hello, World!" → reward: 1.3
-- Empty message → reward: 0.0
-
-## Advanced Usage
-
-### Connecting to an Existing Server
-
-If you already have a Medical Triage environment server running, you can connect directly:
-
-```python
-from medical_triage import MedicalTriageEnv
-
-# Connect to existing server
-medical_triageenv = MedicalTriageEnv(base_url="<ENV_HTTP_URL_HERE>")
-
-# Use as normal
-result = medical_triageenv.reset()
-result = medical_triageenv.step(MedicalTriageAction(message="Hello!"))
-```
-
-Note: When connecting to an existing server, `medical_triageenv.close()` will NOT stop the server.
-
-### Using the Context Manager
-
-The client supports context manager usage for automatic connection management:
-
-```python
-from medical_triage import MedicalTriageAction, MedicalTriageEnv
-
-# Connect with context manager (auto-connects and closes)
-with MedicalTriageEnv(base_url="http://localhost:8000") as env:
-    result = env.reset()
-    print(f"Reset: {result.observation.echoed_message}")
-    # Multiple steps with low latency
-    for msg in ["Hello", "World", "!"]:
-        result = env.step(MedicalTriageAction(message=msg))
-        print(f"Echoed: {result.observation.echoed_message}")
-```
-
-The client uses WebSocket connections for:
-- **Lower latency**: No HTTP connection overhead per request
-- **Persistent session**: Server maintains your environment state
-- **Efficient for episodes**: Better for many sequential steps
-
-### Concurrent WebSocket Sessions
-
-The server supports multiple concurrent WebSocket connections. To enable this,
-modify `server/app.py` to use factory mode:
-
-```python
-# In server/app.py - use factory mode for concurrent sessions
-app = create_app(
-    MedicalTriageEnvironment,  # Pass class, not instance
-    MedicalTriageAction,
-    MedicalTriageObservation,
-    max_concurrent_envs=4,  # Allow 4 concurrent sessions
-)
-```
-
-Then multiple clients can connect simultaneously:
-
-```python
-from medical_triage import MedicalTriageAction, MedicalTriageEnv
-from concurrent.futures import ThreadPoolExecutor
-
-def run_episode(client_id: int):
-    with MedicalTriageEnv(base_url="http://localhost:8000") as env:
-        result = env.reset()
-        for i in range(10):
-            result = env.step(MedicalTriageAction(message=f"Client {client_id}, step {i}"))
-        return client_id, result.observation.message_length
-
-# Run 4 episodes concurrently
-with ThreadPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(run_episode, range(4)))
-```
-
-## Development & Testing
-
-### Direct Environment Testing
-
-Test the environment logic directly without starting the HTTP server:
+Start the OpenEnv server. This exposes the environment on port `7860`:
 
 ```bash
-# From the server directory
-python3 server/medical_triage_environment.py
+docker run -p 7860:7860 medical-triage:latest
 ```
 
-This verifies that:
-- Environment resets correctly
-- Step executes actions properly
-- State tracking works
-- Rewards are calculated correctly
+---
 
-### Running Locally
+### 3. Run the Baseline Inference Agent
 
-Run the server locally for development:
+Open a separate terminal window and run the evaluation agent.
+
+#### 📌 Windows (PowerShell)
+
+```powershell
+$env:HF_TOKEN="your_huggingface_token_here"
+$env:MODEL_NAME="gpt-4o"
+python inference.py
+```
+
+#### 📌 Mac/Linux (Bash)
 
 ```bash
-uvicorn server.app:app --reload
+export HF_TOKEN="your_huggingface_token_here"
+export MODEL_NAME="gpt-4o"
+python inference.py
 ```
 
-## Project Structure
+---
 
-```
+## 📂 Project Structure
+
+```plaintext
 medical_triage/
-├── .dockerignore         # Docker build exclusions
-├── __init__.py            # Module exports
-├── README.md              # This file
-├── openenv.yaml           # OpenEnv manifest
-├── pyproject.toml         # Project metadata and dependencies
-├── uv.lock                # Locked dependencies (generated)
-├── client.py              # MedicalTriageEnv client
-├── models.py              # Action and Observation models
-└── server/
-    ├── __init__.py        # Server module exports
-    ├── medical_triage_environment.py  # Core environment logic
-    ├── app.py             # FastAPI application (HTTP + WebSocket endpoints)
-    └── Dockerfile         # Container image definition
+├── data/
+│   ├── triage_basic.json
+│   ├── triage_vitals.json
+│   └── triage_emergency.json
+├── server/
+│   ├── __init__.py
+│   ├── app.py
+│   └── medical_triage_environment.py
+├── models.py
+├── openenv.yaml
+├── Dockerfile
+├── requirements.txt
+├── inference.py
+└── README.md
 ```

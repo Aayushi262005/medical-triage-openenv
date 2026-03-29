@@ -1,0 +1,12 @@
+[
+  {
+    "id": "M1",
+    "desc": "Patient feels 'a bit dizzy' after sitting up. No pain reported.",
+    "hr": 130, "bp": "85/50", "correct": 2
+  },
+  {
+    "id": "M2",
+    "desc": "Moderate abdominal pain, patient is walking and talking normally.",
+    "hr": 85, "bp": "125/82", "correct": 4
+  }
+]

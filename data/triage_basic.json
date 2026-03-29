@@ -1,0 +1,12 @@
+[
+  {
+    "id": "B1",
+    "desc": "Sore throat",
+    "hr": 70, "bp": "120/80", "correct": 5
+  },
+  {
+    "id": "B2",
+    "desc": "CRITICAL: Chest pain and shortness of breath",
+    "hr": 130, "bp": "90/60", "correct": 1
+  }
+]

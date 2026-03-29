@@ -1,0 +1,18 @@
+name: medical_triage_evaluation
+version: "1.0.0"
+description: "Clinical Triage Environment for AI Agents to prioritize ER patients based on severity."
+entry_point: "server.medical_triage_environment:MedicalTriageEnvironment"
+env_type: "medical"
+tasks:
+  - id: "triage_basic"
+    name: "Basic Triage"
+    difficulty: "easy"
+    description: "Standard cases with clear physical symptoms."
+  - id: "triage_vitals"
+    name: "Vitals-Based Triage"
+    difficulty: "medium"
+    description: "Requires interpreting Heart Rate and Blood Pressure data."
+  - id: "triage_emergency"
+    name: "Critical Care Triage"
+    difficulty: "hard"
+    description: "High-stakes scenarios with potential safety penalties."

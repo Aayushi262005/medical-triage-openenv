@@ -8,7 +8,6 @@ app = FastAPI()
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
 def run_triage_simulation(dataset_name):
-    # MATCHING YOUR FILE NAMES FROM THE IMAGE:
     file_map = {
         "Basic Triage": "triage_basic",
         "Emergency Cases": "triage_emergency",

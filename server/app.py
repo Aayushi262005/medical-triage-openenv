@@ -42,30 +42,54 @@ def run_triage_simulation(dataset_name):
     
     while not done and obs is not None:
         current_desc = obs.patient_description
-        action = MedicalTriageAction(priority_level=3, reasoning="Dashboard Test")
+        current_bp = obs.vitals_bp
+        current_hr = obs.vitals_hr
+        
+        # Dashboard uses a baseline Level 3 for internal testing
+        chosen_level = 3
+        action = MedicalTriageAction(priority_level=chosen_level, reasoning="Dashboard Test")
         step_result = env.step(action)
         
         reward = step_result.reward
         total_score += reward
         correct_level = step_result.info.get("correct", "N/A")
+        status = step_result.info.get("status", "Processed")
         
         icon = "❌" if reward < 0 else "✅"
-        results.append(f"{icon} PATIENT: {current_desc[:50]}...\n   🤖 ACTION: Level 3 | ✅ CORRECT: Level {correct_level} | 💰 REWARD: {reward}\n" + "-"*30)
         
-        if step_result.done: done = True
-        else: obs = step_result.observation
+        log_entry = (
+            f"{icon} PATIENT: {current_desc}\n"
+            f"   VITALS: BP {current_bp} | HR {current_hr}\n"
+            f"   AI CHOICE: Level {chosen_level} | CORRECT: Level {correct_level}\n"
+            f"   REWARD: {reward} | 📝 FEEDBACK: {status}\n"
+            + "-"*50
+        )
+        results.append(log_entry)
+        
+        if step_result.done:
+            done = True
+        else:
+            obs = step_result.observation
 
-    return "\n".join(results), f"SCORE: {total_score}"
+    verdict = "🟢 PASS" if total_score >= 0 else "🔴 SAFETY ALERT"
+    final_score_text = f"TOTAL SCORE: {total_score} | {verdict}"
+    
+    return "\n".join(results), final_score_text
 
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
     with gr.Row():
         with gr.Column(scale=1):
-            dataset_dropdown = gr.Dropdown(choices=["Basic Triage", "Emergency Cases", "Vitals Focus"], value="Basic Triage", label="Dataset")
+            dataset_dropdown = gr.Dropdown(
+                choices=["Basic Triage", "Emergency Cases", "Vitals Focus"], 
+                value="Basic Triage", 
+                label="Dataset"
+            )
             run_btn = gr.Button("🚀 Run Dashboard Trial", variant="primary")
-            score_display = gr.Label(label="Result")
+            score_display = gr.Label(label="System Verdict") # Changed to Label for better visibility
         with gr.Column(scale=2):
-            output_log = gr.Textbox(label="Logs", lines=15)
+            output_log = gr.Textbox(label="Evaluation Logs", lines=18, interactive=False)
+
     run_btn.click(run_triage_simulation, inputs=[dataset_dropdown], outputs=[output_log, score_display])
 
 app = gr.mount_gradio_app(app, demo, path="/")

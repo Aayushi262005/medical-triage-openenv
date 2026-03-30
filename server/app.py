@@ -7,7 +7,19 @@ from models import MedicalTriageAction
 app = FastAPI()
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
-def run_triage_simulation():
+def run_triage_simulation(dataset_name):
+    # MATCHING YOUR FILE NAMES FROM THE IMAGE:
+    file_map = {
+        "Basic Triage": "triage_basic",
+        "Emergency Cases": "triage_emergency",
+        "Vitals Focus": "triage_vitals"
+    }
+    
+    task_id = file_map.get(dataset_name, "triage_basic")
+    
+    # Re-initialize the environment with the selected dataset
+    env.__init__(task_id=task_id)
+    
     obs = env.reset()
     results = []
     total_score = 0.0
@@ -15,36 +27,65 @@ def run_triage_simulation():
     
     while not done:
         current_desc = obs.patient_description
-        # This calls your class logic (including the -2.0 and -0.5 penalties)
-        action = MedicalTriageAction(priority_level=3, reasoning="AI trial assessment.")
+        current_bp = obs.vitals_bp
+        current_hr = obs.vitals_hr
+        
+        # Simulated Agent Action
+        action = MedicalTriageAction(
+            priority_level=3, 
+            reasoning=f"Automated assessment of {current_desc}."
+        )
+        
         step_result = env.step(action)
         
         reward = step_result.reward
         total_score += reward
-        status = step_result.info.get("status", "Standard Triage")
+        status = step_result.info.get("status", "Normal")
         
-        # Color coding the log for the judge
-        prefix = "❌" if "VIOLATION" in status else "✅"
-        results.append(f"{prefix} Patient: {current_desc}\n   Action: Level {action.priority_level} | Reward: {reward}\n   Feedback: {status}\n" + "-"*25)
+        icon = "❌" if "VIOLATION" in status else "✅"
+        log_entry = (
+            f"{icon} PATIENT: {current_desc}\n"
+            f"   📊 VITALS: BP {current_bp} | HR {current_hr}\n"
+            f"   🎯 ACTION: Level {action.priority_level} | REWARD: {reward}\n"
+            f"   📝 FEEDBACK: {status}\n"
+            + "-"*40
+        )
+        results.append(log_entry)
         
         if step_result.done:
             done = True
         else:
             obs = step_result.observation
 
-    verdict = "🟢 HIGH SAFETY" if total_score >= 1.5 else "🔴 SAFETY ALERT"
+    if total_score >= 2.0:
+        verdict = "🟢 ELITE PERFORMANCE"
+    elif total_score >= 0:
+        verdict = "🟡 PASS"
+    else:
+        verdict = "🔴 SAFETY FAILURE"
+
     return "\n".join(results), f"TOTAL SCORE: {total_score} | {verdict}"
 
+# --- GRADIO DASHBOARD ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# 🏥 Medical Triage AI Dashboard")
+    gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
+    
     with gr.Row():
-        with gr.Column(scale=2):
-            output_log = gr.Textbox(label="Live Environment Logs (Internal Penalties Active)", lines=12)
         with gr.Column(scale=1):
-            score_display = gr.Label(label="Final Agent Score")
+            dataset_dropdown = gr.Dropdown(
+                choices=["Basic Triage", "Emergency Cases", "Vitals Focus"],
+                value="Basic Triage",
+                label="Select Test Scenario"
+            )
             run_btn = gr.Button("🚀 Run AI Agent Trial", variant="primary")
-    run_btn.click(run_triage_simulation, outputs=[output_log, score_display])
+            score_display = gr.Label(label="Final Evaluation Score")
+            
+        with gr.Column(scale=2):
+            output_log = gr.Textbox(label="Live Environment Logs", lines=15)
 
+    run_btn.click(run_triage_simulation, inputs=[dataset_dropdown], outputs=[output_log, score_display])
+
+# --- API ENDPOINTS ---
 @app.get("/health")
 def health():
     return {"message": "Medical Triage Environment is Active", "status": "Green"}

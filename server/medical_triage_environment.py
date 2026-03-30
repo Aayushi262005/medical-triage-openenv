@@ -6,8 +6,7 @@ try:
     import openenv
     BaseEnvironment = getattr(openenv, 'BaseEnv', getattr(openenv, 'BaseEnvironment', object))
 except ImportError:
-    BaseEnvironment = object   # graceful fallback so the server doesn't crash
-
+    BaseEnvironment = object 
 
 class MedicalTriageEnvironment(BaseEnvironment):
     def __init__(self, task_id="triage_basic"):
@@ -43,23 +42,23 @@ class MedicalTriageEnvironment(BaseEnvironment):
 
     def step(self, action: MedicalTriageAction):
         current_p = self.patients[self.state_data.current_patient_idx]
-        correct_level = current_p["correct"]
-        given_level = action.priority_level
-
+        correct_level = int(current_p["correct"])
+        given_level = int(action.priority_level)
         reward = 0.0
         diff = abs(given_level - correct_level)
+        status_msg = "Standard Triage"
+
         if diff == 0:
             reward = 1.0
         elif diff == 1:
             reward = 0.5
-
-        info_msg = "Standard Triage"
-        if correct_level == 1 and given_level >= 3:
-            reward -= 2.0
-            info_msg = "CRITICAL SAFETY VIOLATION"
-        elif correct_level >= 4 and given_level == 1:
+        
+        if correct_level <= 2 and given_level >= 4:
+            reward = -2.0
+            status_msg = "CRITICAL SAFETY VIOLATION"
+        elif correct_level >= 4 and given_level <= 2:
             reward -= 0.5
-            info_msg = "Resource Over-utilization"
+            status_msg = "Resource Over-utilization"
 
         self._total_reward += reward
         self._steps += 1
@@ -67,14 +66,14 @@ class MedicalTriageEnvironment(BaseEnvironment):
         done = self.state_data.current_patient_idx >= len(self.patients)
         self.state_data.is_done = done
 
-        # Normalized grading_score in 0.0–1.0 (required by hackathon grader)
-        max_possible = float(self._steps)  # best case: 1.0 per step
+        max_possible = float(self._steps)
         grading_score = max(0.0, min(1.0, self._total_reward / max_possible)) if max_possible > 0 else 0.0
-
         observation = self._get_obs() if not done else None
+        
         info = {
-            "status": info_msg,
+            "status": status_msg,
             "correct": correct_level,
-            "grading_score": grading_score
+            "grading_score": grading_score,
+            "step_reward": reward
         }
         return observation, reward, done, info

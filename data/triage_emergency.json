@@ -1,17 +1,20 @@
 [
   {
-    "id": "H1",
-    "desc": "65yo male, 'heartburn' that won't go away with antacids. Feels 'clammy'.",
-    "hr": 102, "bp": "110/70", "correct": 1
+    "patient_description": "30yo female, unresponsive after a motor vehicle accident, shallow respirations.",
+    "vitals_bp": "80/40",
+    "vitals_hr": 140,
+    "correct_priority": 1
   },
   {
-    "id": "H2",
-    "desc": "Post-op patient with sudden shortness of breath and calf pain.",
-    "hr": 115, "bp": "130/85", "correct": 1
+    "patient_description": "50yo male with facial drooping and inability to speak, started 30 mins ago.",
+    "vitals_bp": "190/110",
+    "vitals_hr": 88,
+    "correct_priority": 1
   },
   {
-    "id": "H3",
-    "desc": "Young female with severe lower abdominal pain and 10/10 dizziness.",
-    "hr": 125, "bp": "88/54", "correct": 1
+    "patient_description": "19yo male with a severely deformed ankle after a fall, pulses are present.",
+    "vitals_bp": "135/88",
+    "vitals_hr": 105,
+    "correct_priority": 2
   }
 ]

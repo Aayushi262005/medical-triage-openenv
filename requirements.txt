@@ -4,5 +4,6 @@ pydantic
 requests
 openenv
 watchfiles
+gradio
 
 

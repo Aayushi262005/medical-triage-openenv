@@ -1,11 +1,12 @@
 fastapi
 uvicorn[standard]
-pydantic
+pydantic>=2.0
 requests
 openenv
 watchfiles
 gradio
 groq
 openai
-
-
+python-multipart
+python-dotenv
+numpy

@@ -1,0 +1,26 @@
+# Python virtual environments (Hide the massive .venv folder)
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache files (Hide temporary processing files)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment secrets (Hide your API keys if you ever use a .env file)
+.env
+.flaskenv
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Build and Distribution
+*.egg-info/
+dist/
+build/
+
+# VS Code settings
+.vscode/

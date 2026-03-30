@@ -4,10 +4,10 @@ from openai import OpenAI
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
-# MANDATORY: Use the exact variable names from the problem statement
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-# They specifically mentioned HF_TOKEN in the requirements
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY") or "sk-test"
+HF_TOKEN = os.getenv("HF_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+API_KEY = HF_TOKEN if HF_TOKEN else OPENAI_API_KEY
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4")
 
 client = OpenAI(
@@ -16,49 +16,63 @@ client = OpenAI(
 )
 
 def run_task(task_id):
+    """Runs a single triage task and returns the final score."""
     env = MedicalTriageEnvironment(task_id=task_id)
     obs = env.reset()
     done = False
-    results = []
+    total_reward = 0.0
+    
+    print(f"\n>>> Starting Task: {task_id}")
 
-    print(f"Starting Task: {task_id}")
+    # Standard OpenEnv loop: limit steps to prevent infinite loops (Safety check)
+    max_steps = 10 
+    step_count = 0
 
-    while not done and obs is not None:
-        prompt = (
-            f"Triage this patient: {obs.patient_description}. "
-            f"Vitals: HR {obs.vitals_hr}, BP {obs.vitals_bp}. "
-            f"Provide priority 1-5 and reasoning in JSON format with keys 'priority_level' and 'reasoning'."
-        )
+    while not done and obs is not None and step_count < max_steps:
+        step_count += 1
+        
+        messages = [
+            {"role": "system", "content": "You are a professional ER Triage Nurse. Analyze patient data and respond ONLY with a JSON object containing 'priority_level' (1-5) and 'reasoning' (string)."},
+            {"role": "user", "content": f"Patient: {obs.patient_description}. Vitals: HR {obs.vitals_hr}, BP {obs.vitals_bp}."}
+        ]
         
         try:
             response = client.chat.completions.create(
                 model=MODEL_NAME,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 response_format={"type": "json_object"}
             )
             
             content = response.choices[0].message.content
             action_data = json.loads(content)
+            
             action = MedicalTriageAction(**action_data)
             
-            step_result = env.step(action)
-            results.append(step_result)
+            obs, reward, done, info = env.step(action)
+            total_reward += reward
             
-            obs = step_result.observation
-            done = step_result.done
-            
-            print(f"  Step: Priority {action.priority_level} assigned. Reward: {step_result.reward}")
+            print(f"  Step {step_count}: Assigned Priority {action.priority_level} | Reward: {reward}")
             
         except Exception as e:
-            print(f"Error during inference: {e}")
-            break # Exit current task loop on critical error
+            print(f"  Error during inference for {task_id}: {e}")
+            break 
     
-    return results
+    final_score = info.get("grading_score", total_reward)
+    return final_score
 
 if __name__ == "__main__":
-    # Ensure tasks match your openenv.yaml
     tasks = ["triage_basic", "triage_vitals", "triage_emergency"]
+    results = {}
+
+    print("=== Starting OpenEnv Baseline Inference ===")
+    
     for task in tasks:
-        print(f"--- Running {task} ---")
-        run_task(task)
+        score = run_task(task)
+        results[task] = score
+        print(f"--- Finished {task} | Final Score: {score} ---")
+
+    print("\n" + "="*40)
+    print("BASELINE REPRODUCIBILITY SUMMARY:")
+    print(json.dumps(results, indent=4))
+    print("="*40)
     print("Inference baseline complete.")

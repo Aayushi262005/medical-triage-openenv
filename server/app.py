@@ -83,7 +83,7 @@ def run_triage_simulation(dataset_name):
         log_entry = (
             f"{icon} PATIENT: {obs.patient_description}\n"
             f"   AI CHOICE: Level {level} | CORRECT: Level {step_result.info.get('correct')}\n"
-            f"   REWARD: {step_result.reward} | 📝 FEEDBACK: {step_result.info.get('status')}\n"
+            f"   REWARD: {step_result.reward}\n"
             + "-"*50
         )
         results.append(log_entry)

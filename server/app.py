@@ -43,6 +43,7 @@ def run_triage_simulation(dataset_name):
         reward = step_result.reward
         total_score += reward
         status = step_result.info.get("status", "Standard Triage")
+        correct_level = step_result.info.get("correct", "N/A")
         
         # Formatting the log for the UI
         icon = "❌" if reward < 0 else "✅"
@@ -78,7 +79,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             score_display = gr.Label(label="Trial Result")
             
         with gr.Column(scale=2):
-            output_log = gr.Textbox(label="Environment Logs", lines=15)
+            output_log = gr.Textbox(label="Decision Logs (AI vs Truth)", lines=15)
 
     run_btn.click(run_triage_simulation, inputs=[dataset_dropdown], outputs=[output_log, score_display])
 

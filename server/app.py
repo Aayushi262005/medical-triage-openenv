@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
-from .medical_triage_environment import MedicalTriageEnvironment
+from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
 app = FastAPI()

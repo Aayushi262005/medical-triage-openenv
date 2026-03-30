@@ -1,20 +1,20 @@
 [
   {
-    "patient_description": "28yo male 'just feels dizzy' but appears very pale and diaphoretic.",
-    "vitals_bp": "70/30",
-    "vitals_hr": 150,
-    "correct_priority": 1
+    "desc": "28yo male 'just feels dizzy' but appears very pale and diaphoretic.",
+    "bp": "70/30",
+    "hr": 150,
+    "correct": 1
   },
   {
-    "patient_description": "80yo female with a mild urinary tract infection and slight confusion.",
-    "vitals_bp": "110/70",
-    "vitals_hr": 72,
-    "correct_priority": 3
+    "desc": "80yo female with a mild urinary tract infection and slight confusion.",
+    "bp": "110/70",
+    "hr": 72,
+    "correct": 3
   },
   {
-    "patient_description": "35yo female with mild 'anxiety' and palpitations after coffee.",
-    "vitals_bp": "138/85",
-    "vitals_hr": 98,
-    "correct_priority": 5
+    "desc": "35yo female with mild 'anxiety' and palpitations after coffee.",
+    "bp": "138/85",
+    "hr": 98,
+    "correct": 5
   }
 ]

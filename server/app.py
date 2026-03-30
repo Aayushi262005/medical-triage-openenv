@@ -16,7 +16,7 @@ def run_triage_simulation():
     while not done:
         current_desc = obs.patient_description
         # This calls your class logic (including the -2.0 and -0.5 penalties)
-        action = MedicalTriageAction(priority_level=3, justification="AI trial assessment.")
+        action = MedicalTriageAction(priority_level=3, reasoning="AI trial assessment.")
         step_result = env.step(action)
         
         reward = step_result.reward

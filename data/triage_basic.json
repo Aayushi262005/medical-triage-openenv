@@ -1,12 +1,21 @@
 [
+ [
   {
-    "id": "B1",
-    "desc": "Sore throat",
-    "hr": 70, "bp": "120/80", "correct": 5
+    "patient_description": "65yo male complaining of sudden crushing chest pain and shortness of breath.",
+    "vitals_bp": "160/95",
+    "vitals_hr": 110,
+    "correct_priority": 1
   },
   {
-    "id": "B2",
-    "desc": "CRITICAL: Chest pain and shortness of breath",
-    "hr": 130, "bp": "90/60", "correct": 1
+    "patient_description": "22yo female with a 2-inch superficial laceration on the forearm, bleeding is controlled.",
+    "vitals_bp": "120/80",
+    "vitals_hr": 75,
+    "correct_priority": 4
+  },
+  {
+    "patient_description": "45yo male with a high fever (103F) and productive cough for 3 days.",
+    "vitals_bp": "130/85",
+    "vitals_hr": 95,
+    "correct_priority": 3
   }
 ]

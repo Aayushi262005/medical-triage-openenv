@@ -7,24 +7,24 @@ from groq import Groq
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
-app = FastAPI()
+fastapi_app = FastAPI()   # renamed so gr.mount doesn't overwrite it
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
-@app.get("/health")
+@fastapi_app.get("/health")
 def health():
     return {"status": "Green", "api_connected": client is not None}
 
-@app.post("/reset")
+@fastapi_app.post("/reset")
 def reset(task_id: str = "triage_basic"):
     env.__init__(task_id=task_id)
     obs = env.reset()
     return obs.model_dump() if hasattr(obs, 'model_dump') else obs
 
-@app.post("/step")
+@fastapi_app.post("/step")
 def step(action: MedicalTriageAction):
     observation, reward, done, info = env.step(action)
     return {
@@ -34,7 +34,7 @@ def step(action: MedicalTriageAction):
         "info": info if isinstance(info, dict) else {}
     }
 
-@app.get("/state")
+@fastapi_app.get("/state")
 def get_state():
     state_data = env.state()
     return state_data.model_dump() if hasattr(state_data, 'model_dump') else state_data
@@ -42,7 +42,6 @@ def get_state():
 def get_llama_decision(description, bp, hr):
     if not client:
         return {"level": 3, "reasoning": "Missing GROQ_API_KEY."}
-                
     prompt = f"Patient: {description}. Vitals: BP {bp}, HR {hr}. Return ONLY JSON: {{'level': <int>, 'reasoning': '<str>'}}"
     try:
         chat = client.chat.completions.create(
@@ -56,40 +55,31 @@ def get_llama_decision(description, bp, hr):
 
 def run_triage_simulation(dataset_name):
     file_map = {
-        "Basic Triage": "triage_basic", 
-        "Emergency Cases": "triage_emergency", 
+        "Basic Triage": "triage_basic",
+        "Emergency Cases": "triage_emergency",
         "Vitals Focus": "triage_vitals"
     }
     task_id = file_map.get(dataset_name, "triage_basic")
     env.__init__(task_id=task_id)
-    
+
     obs = env.reset()
     results = []
     total_score = 0.0
-    
+
     while obs is not None:
         ai_output = get_llama_decision(obs.patient_description, obs.vitals_bp, obs.vitals_hr)
         level = ai_output.get("level", 3)
-        
         if not isinstance(level, int) or not (1 <= level <= 5):
             level = 3
-            
-        action = MedicalTriageAction(
-            priority_level=level, 
-            reasoning=ai_output.get("reasoning", "")
-        )
-        
+        action = MedicalTriageAction(priority_level=level, reasoning=ai_output.get("reasoning", ""))
         obs, reward, done, info = env.step(action)
         total_score += reward
         icon = "✅" if reward > 0 else "❌"
-        
         log_entry = (
             f"{icon} PATIENT: {action.reasoning[:60]}...\n"
-            f"   AI CHOICE: Level {level} | REWARD: {reward}\n"
-            + "-"*50
+            f"   AI CHOICE: Level {level} | REWARD: {reward}\n" + "-"*50
         )
         results.append(log_entry)
-        
         if done:
             break
 
@@ -98,23 +88,20 @@ def run_triage_simulation(dataset_name):
 
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
-    
     with gr.Row():
         with gr.Column(scale=1):
             dataset_dropdown = gr.Dropdown(
-                choices=["Basic Triage", "Emergency Cases", "Vitals Focus"], 
-                value="Basic Triage", 
-                label="Select Test Scenario"
+                choices=["Basic Triage", "Emergency Cases", "Vitals Focus"],
+                value="Basic Triage", label="Select Test Scenario"
             )
             run_btn = gr.Button("🚀 Start Live AI Triage", variant="primary")
             score_display = gr.Label(label="System Verdict")
-                    
         with gr.Column(scale=2):
             output_log = gr.Textbox(label="Real-Time Evaluation Logs", lines=20, interactive=False)
-
     run_btn.click(run_triage_simulation, inputs=[dataset_dropdown], outputs=[output_log, score_display])
 
-app = gr.mount_gradio_app(app, demo, path="/")
+# Mount Gradio onto FastAPI — use the renamed variable
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))

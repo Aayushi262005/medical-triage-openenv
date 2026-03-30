@@ -1,32 +1,24 @@
-import openenv
 import json
 import os
-from dataclasses import dataclass
-from typing import Any, Optional
 from models import MedicalTriageObservation, MedicalTriageAction, MedicalTriageState
 
-@dataclass
-class StepResult:
-    observation: Optional[MedicalTriageObservation]
-    reward: float
-    done: bool
-    info: dict
+try:
+    import openenv
+    BaseEnvironment = getattr(openenv, 'BaseEnv', getattr(openenv, 'BaseEnvironment', object))
+except ImportError:
+    BaseEnvironment = object   # graceful fallback so the server doesn't crash
 
-# Handles Base Class safely
-BaseEnvironment = getattr(openenv, 'BaseEnv', getattr(openenv, 'BaseEnvironment', object))
 
 class MedicalTriageEnvironment(BaseEnvironment):
     def __init__(self, task_id="triage_basic"):
         self.task_id = task_id
-        # Standardized to self.state_data to match your reset/state methods
         self.state_data = MedicalTriageState(current_patient_idx=0, is_done=False)
-
-        # Updated path to look into the 'data' folder for specific tasks
         current_dir = os.path.dirname(__file__)
         path = os.path.join(current_dir, '..', 'data', f'{task_id}.json')
-        
         with open(path, "r") as f:
             self.patients = json.load(f)
+        self._total_reward = 0.0
+        self._steps = 0
 
     def state(self) -> MedicalTriageState:
         return self.state_data
@@ -34,8 +26,10 @@ class MedicalTriageEnvironment(BaseEnvironment):
     def reset(self) -> MedicalTriageObservation:
         self.state_data.current_patient_idx = 0
         self.state_data.is_done = False
+        self._total_reward = 0.0
+        self._steps = 0
         return self._get_obs()
-    
+
     def _get_obs(self):
         if self.state_data.current_patient_idx >= len(self.patients):
             return None
@@ -54,12 +48,11 @@ class MedicalTriageEnvironment(BaseEnvironment):
 
         reward = 0.0
         diff = abs(given_level - correct_level)
-        
         if diff == 0:
             reward = 1.0
         elif diff == 1:
             reward = 0.5
-            
+
         info_msg = "Standard Triage"
         if correct_level == 1 and given_level >= 3:
             reward -= 2.0
@@ -68,12 +61,20 @@ class MedicalTriageEnvironment(BaseEnvironment):
             reward -= 0.5
             info_msg = "Resource Over-utilization"
 
+        self._total_reward += reward
+        self._steps += 1
         self.state_data.current_patient_idx += 1
         done = self.state_data.current_patient_idx >= len(self.patients)
         self.state_data.is_done = done
 
-        # 4. RETURN AS A TUPLE
+        # Normalized grading_score in 0.0–1.0 (required by hackathon grader)
+        max_possible = float(self._steps)  # best case: 1.0 per step
+        grading_score = max(0.0, min(1.0, self._total_reward / max_possible)) if max_possible > 0 else 0.0
+
         observation = self._get_obs() if not done else None
-        info = {"status": info_msg, "correct": correct_level}
-        
+        info = {
+            "status": info_msg,
+            "correct": correct_level,
+            "grading_score": grading_score
+        }
         return observation, reward, done, info

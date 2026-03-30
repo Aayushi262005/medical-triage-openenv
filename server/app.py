@@ -14,7 +14,8 @@ def health():
     return {"status": "Green", "message": "Active"}
 
 @app.post("/reset")
-def reset():
+def reset(task_id: str = "triage_basic"):
+    env.__init__(task_id=task_id)
     obs = env.reset()
     return obs.model_dump() if obs else {"error": "Reset failed"}
 

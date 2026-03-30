@@ -1,20 +1,20 @@
 [
   {
-    "patient_description": "30yo female, unresponsive after a motor vehicle accident, shallow respirations.",
-    "vitals_bp": "80/40",
-    "vitals_hr": 140,
-    "correct_priority": 1
+    "desc": "30yo female, unresponsive after a motor vehicle accident, shallow respirations.",
+    "bp": "80/40",
+    "hr": 140,
+    "correct": 1
   },
   {
-    "patient_description": "50yo male with facial drooping and inability to speak, started 30 mins ago.",
-    "vitals_bp": "190/110",
-    "vitals_hr": 88,
-    "correct_priority": 1
+    "desc": "50yo male with facial drooping and inability to speak, started 30 mins ago.",
+    "bp": "190/110",
+    "hr": 88,
+    "correct": 1
   },
   {
-    "patient_description": "19yo male with a severely deformed ankle after a fall, pulses are present.",
-    "vitals_bp": "135/88",
-    "vitals_hr": 105,
-    "correct_priority": 2
+    "desc": "19yo male with a severely deformed ankle after a fall, pulses are present.",
+    "bp": "135/88",
+    "hr": 105,
+    "correct": 2
   }
 ]

@@ -32,9 +32,10 @@ def run_triage_simulation(dataset_name):
         current_hr = obs.vitals_hr
         
         # Simulated Agent Action - using 'reasoning' for Pydantic safety
+        chosen_level = 3 
         action = MedicalTriageAction(
-            priority_level=3, 
-            reasoning=f"Automated trial for {dataset_name}"
+            priority_level=chosen_level, 
+            reasoning=f"Trial assessment for {dataset_name}"
         )
         
         step_result = env.step(action)
@@ -47,10 +48,10 @@ def run_triage_simulation(dataset_name):
         icon = "❌" if reward < 0 else "✅"
         log_entry = (
             f"{icon} PATIENT: {current_desc}\n"
-            f"   📊 VITALS: BP {current_bp} | HR {current_hr}\n"
-            f"   🎯 ACTION: Level {action.priority_level} | REWARD: {reward}\n"
-            f"   📝 FEEDBACK: {status}\n"
-            + "-"*40
+            f"   VITALS: BP {current_bp} | HR {current_hr}\n"
+            f"   AI CHOICE: Level {chosen_level} | CORRECT: Level {correct_level}\n"
+            f"   REWARD: {reward} | 📝 FEEDBACK: {status}\n"
+            + "-"*50
         )
         results.append(log_entry)
         

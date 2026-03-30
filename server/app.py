@@ -6,6 +6,10 @@ from models import MedicalTriageAction
 app = FastAPI()
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
+@app.get("/")
+def home():
+    return {"message": "Medical Triage Environment is Active", "status": "Green"}
+
 @app.post("/reset")
 def reset():
     obs = env.reset()

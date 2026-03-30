@@ -9,11 +9,12 @@ from models import MedicalTriageAction
 
 app = FastAPI()
 
-# Configuration
+# --- CONFIGURATION ---
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
+# --- API ENDPOINTS ---
 @app.get("/health")
 def health():
     return {"status": "Green", "message": "Active", "api_connected": client is not None}
@@ -34,10 +35,11 @@ def step(action: MedicalTriageAction):
         "info": result.info
     }
 
+# --- LLAMA INFERENCE ---
 def get_llama_decision(description, bp, hr):
     if not client:
-        return {"level": 3, "reasoning": "API Key missing."}
-        
+        return {"level": 3, "reasoning": "Missing GROQ_API_KEY in Secrets."}
+            
     prompt = f"Patient: {description}. Vitals: BP {bp}, HR {hr}. Return ONLY JSON: {{'level': <int>, 'reasoning': '<str>'}}"
     try:
         chat = client.chat.completions.create(
@@ -46,9 +48,10 @@ def get_llama_decision(description, bp, hr):
             response_format={"type": "json_object"}
         )
         return json.loads(chat.choices[0].message.content)
-    except Exception:
-        return {"level": 3, "reasoning": "Fallback to baseline assessment."}
+    except Exception as e:
+        return {"level": 3, "reasoning": f"AI Error: {str(e)}"}
 
+# --- UI LOGIC ---
 def run_triage_simulation(dataset_name):
     file_map = {
         "Basic Triage": "triage_basic", 
@@ -62,11 +65,12 @@ def run_triage_simulation(dataset_name):
     results = []
     total_score = 0.0
     
+    # Loop through patients
     while obs is not None:
         ai_output = get_llama_decision(obs.patient_description, obs.vitals_bp, obs.vitals_hr)
         level = ai_output.get("level", 3)
         
-        # Validation for AI output
+        # Guardrail: Ensure level is 1-5
         if not isinstance(level, int) or level < 1 or level > 5:
             level = 3
             
@@ -84,10 +88,11 @@ def run_triage_simulation(dataset_name):
         )
         results.append(log_entry)
         
-        if step_result.done: break
+        if step_result.done:
+            break
         obs = step_result.observation
 
-    # Score Verdict Logic
+    # Final Verdict Calculation
     if total_score >= 10:
         verdict = "🟢 EXCELLENT"
     elif total_score >= 0:
@@ -97,7 +102,7 @@ def run_triage_simulation(dataset_name):
         
     return "\n".join(results), f"TOTAL SCORE: {total_score} | {verdict}"
 
-# Gradio Interface
+# --- GRADIO INTERFACE ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
     
@@ -116,8 +121,10 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
     run_btn.click(run_triage_simulation, inputs=[dataset_dropdown], outputs=[output_log, score_display])
 
+# Mount Gradio to FastAPI
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
+    # Standard HF port configuration
     port = int(os.environ.get("PORT", 7860))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -6,5 +6,6 @@ openenv
 watchfiles
 gradio
 groq
+openai
 
 

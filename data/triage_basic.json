@@ -1,20 +1,20 @@
 [
   {
-    "patient_description": "65yo male complaining of sudden crushing chest pain and shortness of breath.",
-    "vitals_bp": "160/95",
-    "vitals_hr": 110,
-    "correct_priority": 1
+    "desc": "65yo male complaining of sudden crushing chest pain and shortness of breath.",
+    "bp": "160/95",
+    "hr": 110,
+    "correct": 1
   },
   {
-    "patient_description": "22yo female with a 2-inch superficial laceration on the forearm, bleeding is controlled.",
-    "vitals_bp": "120/80",
-    "vitals_hr": 75,
-    "correct_priority": 4
+    "desc": "22yo female with a 2-inch superficial laceration on the forearm, bleeding is controlled.",
+    "bp": "120/80",
+    "hr": 75,
+    "correct": 4
   },
   {
-    "patient_description": "45yo male with a high fever (103F) and productive cough for 3 days.",
-    "vitals_bp": "130/85",
-    "vitals_hr": 95,
-    "correct_priority": 3
+    "desc": "45yo male with a high fever (103F) and productive cough for 3 days.",
+    "bp": "130/85",
+    "hr": 95,
+    "correct": 3
   }
 ]

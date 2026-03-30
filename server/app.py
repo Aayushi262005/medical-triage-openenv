@@ -3,15 +3,20 @@ from fastapi import FastAPI
 import uvicorn
 import json
 import os
+from groq import Groq
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
 app = FastAPI()
+
+# Configuration
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
 @app.get("/health")
 def health():
-    return {"status": "Green", "message": "Active"}
+    return {"status": "Green", "message": "Active", "api_connected": client is not None}
 
 @app.post("/reset")
 def reset(task_id: str = "triage_basic"):
@@ -29,10 +34,25 @@ def step(action: MedicalTriageAction):
         "info": result.info
     }
 
+def get_llama_decision(description, bp, hr):
+    if not client:
+        return {"level": 3, "reasoning": "API Key missing."}
+        
+    prompt = f"Patient: {description}. Vitals: BP {bp}, HR {hr}. Return ONLY JSON: {{'level': <int>, 'reasoning': '<str>'}}"
+    try:
+        chat = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+            response_format={"type": "json_object"}
+        )
+        return json.loads(chat.choices[0].message.content)
+    except Exception:
+        return {"level": 3, "reasoning": "Fallback to baseline assessment."}
+
 def run_triage_simulation(dataset_name):
     file_map = {
-        "Basic Triage": "triage_basic",
-        "Emergency Cases": "triage_emergency",
+        "Basic Triage": "triage_basic", 
+        "Emergency Cases": "triage_emergency", 
         "Vitals Focus": "triage_vitals"
     }
     task_id = file_map.get(dataset_name, "triage_basic")
@@ -41,43 +61,43 @@ def run_triage_simulation(dataset_name):
     obs = env.reset()
     results = []
     total_score = 0.0
-    done = False
     
-    while not done and obs is not None:
-        current_desc = obs.patient_description
-        current_bp = obs.vitals_bp
-        current_hr = obs.vitals_hr
+    while obs is not None:
+        ai_output = get_llama_decision(obs.patient_description, obs.vitals_bp, obs.vitals_hr)
+        level = ai_output.get("level", 3)
         
-        chosen_level = 3
-        action = MedicalTriageAction(priority_level=chosen_level, reasoning="Dashboard Test")
+        # Validation for AI output
+        if not isinstance(level, int) or level < 1 or level > 5:
+            level = 3
+            
+        action = MedicalTriageAction(priority_level=level, reasoning=ai_output.get("reasoning", ""))
         step_result = env.step(action)
         
-        reward = step_result.reward
-        total_score += reward
-        correct_level = step_result.info.get("correct", "N/A")
-        status = step_result.info.get("status", "Processed")
-        
-        icon = "❌" if reward < 0 else "✅"
+        total_score += step_result.reward
+        icon = "❌" if step_result.reward < 0 else "✅"
         
         log_entry = (
-            f"{icon} PATIENT: {current_desc}\n"
-            f"   VITALS: BP {current_bp} | HR {current_hr}\n"
-            f"   AI CHOICE: Level {chosen_level} | CORRECT: Level {correct_level}\n"
-            f"   REWARD: {reward} | 📝 FEEDBACK: {status}\n"
+            f"{icon} PATIENT: {obs.patient_description}\n"
+            f"   AI CHOICE: Level {level} | CORRECT: Level {step_result.info.get('correct')}\n"
+            f"   REWARD: {step_result.reward} | 📝 FEEDBACK: {step_result.info.get('status')}\n"
             + "-"*50
         )
         results.append(log_entry)
         
-        if step_result.done:
-            done = True
-        else:
-            obs = step_result.observation
+        if step_result.done: break
+        obs = step_result.observation
 
-    verdict = "🟢 PASS" if total_score >= 0 else "🔴 SAFETY ALERT"
-    final_score_text = f"TOTAL SCORE: {total_score} | {verdict}"
-    
-    return "\n".join(results), final_score_text
+    # Score Verdict Logic
+    if total_score >= 10:
+        verdict = "🟢 EXCELLENT"
+    elif total_score >= 0:
+        verdict = "🟡 SAFE"
+    else:
+        verdict = "🔴 SAFETY ALERT"
+        
+    return "\n".join(results), f"TOTAL SCORE: {total_score} | {verdict}"
 
+# Gradio Interface
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
     
@@ -86,17 +106,18 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             dataset_dropdown = gr.Dropdown(
                 choices=["Basic Triage", "Emergency Cases", "Vitals Focus"], 
                 value="Basic Triage", 
-                label="Dataset"
+                label="Select Test Scenario"
             )
-            run_btn = gr.Button("🚀 Run Dashboard Trial", variant="primary")
+            run_btn = gr.Button("🚀 Start Live AI Triage", variant="primary")
             score_display = gr.Label(label="System Verdict")
             
         with gr.Column(scale=2):
-            output_log = gr.Textbox(label="Evaluation Logs", lines=18, interactive=False)
+            output_log = gr.Textbox(label="Real-Time Evaluation Logs", lines=20, interactive=False)
 
     run_btn.click(run_triage_simulation, inputs=[dataset_dropdown], outputs=[output_log, score_display])
 
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    port = int(os.environ.get("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)

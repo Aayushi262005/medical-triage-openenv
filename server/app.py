@@ -1,6 +1,8 @@
 import gradio as gr
 from fastapi import FastAPI
 import uvicorn
+import json
+import os
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
@@ -45,7 +47,6 @@ def run_triage_simulation(dataset_name):
         current_bp = obs.vitals_bp
         current_hr = obs.vitals_hr
         
-        # Dashboard uses a baseline Level 3 for internal testing
         chosen_level = 3
         action = MedicalTriageAction(priority_level=chosen_level, reasoning="Dashboard Test")
         step_result = env.step(action)
@@ -78,6 +79,7 @@ def run_triage_simulation(dataset_name):
 
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
+    
     with gr.Row():
         with gr.Column(scale=1):
             dataset_dropdown = gr.Dropdown(
@@ -86,7 +88,8 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                 label="Dataset"
             )
             run_btn = gr.Button("🚀 Run Dashboard Trial", variant="primary")
-            score_display = gr.Label(label="System Verdict") # Changed to Label for better visibility
+            score_display = gr.Label(label="System Verdict")
+            
         with gr.Column(scale=2):
             output_log = gr.Textbox(label="Evaluation Logs", lines=18, interactive=False)
 

@@ -47,12 +47,11 @@ class MedicalTriageEnvironment(BaseEnvironment):
             current_waiting_room_count=len(self.patients) - self.state_data.current_patient_idx
         )
 
-    def step(self, action: MedicalTriageAction) -> StepResult:
+    def step(self, action: MedicalTriageAction):
         current_p = self.patients[self.state_data.current_patient_idx]
         correct_level = current_p["correct"]
         given_level = action.priority_level
 
-        # 1. Base reward calculation
         reward = 0.0
         diff = abs(given_level - correct_level)
         
@@ -62,24 +61,19 @@ class MedicalTriageEnvironment(BaseEnvironment):
             reward = 0.5
             
         info_msg = "Standard Triage"
-
-        # 2. Safety penalties
         if correct_level == 1 and given_level >= 3:
-            reward -=2.0  
+            reward -= 2.0
             info_msg = "CRITICAL SAFETY VIOLATION"
         elif correct_level >= 4 and given_level == 1:
-            reward -=0.5
+            reward -= 0.5
             info_msg = "Resource Over-utilization"
 
-        # 3. State Management
         self.state_data.current_patient_idx += 1
         done = self.state_data.current_patient_idx >= len(self.patients)
         self.state_data.is_done = done
 
-        # 4. Return result (Calling self._get_obs() for consistency)
-        return StepResult(
-            observation=self._get_obs() if not done else None,
-            reward=reward,
-            done=done,
-            info={"status": info_msg, "correct": correct_level}
-        )
+        # 4. RETURN AS A TUPLE
+        observation = self._get_obs() if not done else None
+        info = {"status": info_msg, "correct": correct_level}
+        
+        return observation, reward, done, info

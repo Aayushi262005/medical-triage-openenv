@@ -20,14 +20,14 @@ env = MedicalTriageEnvironment(task_id="triage_basic")
 @app.post("/reset")
 def reset():
     obs = env.reset()
-    return obs.dict() if obs else {}
+    return obs.model_dump() if obs else {}
 
 @app.post("/step")
 def step(action: MedicalTriageAction):
     result = env.step(action)
 
     return {
-        "observation": result.observation.dict() if result.observation else None,
+        "observation": result.observation.model_dump() if result.observation else None,
         "reward": result.reward,
         "done": result.done,
         "info": result.info
@@ -35,7 +35,7 @@ def step(action: MedicalTriageAction):
 
 @app.get("/state")
 def state():
-    return env.state().dict()
+    return env.state().model_dump()
 
 # --- MODEL INFERENCE  ---
 def get_model_decision(description, bp, hr): 

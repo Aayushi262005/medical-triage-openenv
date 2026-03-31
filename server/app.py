@@ -3,40 +3,55 @@ from fastapi import FastAPI
 import uvicorn
 import json
 import os
-from groq import Groq
+from openai import OpenAI  # ✅ CHANGED
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
 app = FastAPI()
 
 # --- CONFIGURATION ---
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+client = OpenAI(  # ✅ CHANGED
+    base_url=os.getenv("API_BASE_URL"),
+    api_key=os.getenv("HF_TOKEN")
+)
+
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
-# --- LLAMA INFERENCE ---
-def get_llama_decision(description, bp, hr):
-    if not client:
-        return {"level": 3, "reasoning": "Missing API Key."}
-            
-    prompt = (
-        f"Patient: {description}. Vitals: BP {bp}, HR {hr}. "
-        f"Assign Triage Level: 1 (Critical) to 5 (Non-urgent). "
-        f"Return ONLY JSON: {{'level': <int>, 'reasoning': '<str>'}}"
-    )
+# --- MODEL INFERENCE (UPDATED) ---
+def get_model_decision(description, bp, hr):  # ✅ RENAMED
+    prompt = f"""
+    Patient: {description}
+    Vitals: BP {bp}, HR {hr}
+
+    Assign Triage Level: 1 (Critical) to 5 (Non-urgent).
+
+    Return ONLY JSON:
+    {{
+        "priority_level": integer (1-5),
+        "reasoning": "short explanation"
+    }}
+    """
+
     try:
-        chat = client.chat.completions.create(
+        response = client.chat.completions.create(
+            model=os.getenv("MODEL_NAME"),
             messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
             response_format={"type": "json_object"}
         )
-        res = json.loads(chat.choices[0].message.content)
-        # Strict enforcement of 1-5 scale
-        lvl = int(res.get("level", 3))
-        res["level"] = max(1, min(5, lvl))
-        return res
-    except:
-        return {"level": 3, "reasoning": "Inference Error"}
+
+        res = json.loads(response.choices[0].message.content)
+
+        lvl = int(res.get("priority_level", 3))
+        lvl = max(1, min(5, lvl))
+
+        return {
+            "level": lvl,
+            "reasoning": res.get("reasoning", "")
+        }
+
+    except Exception as e:
+        print("Inference error:", e)
+        return {"level": 3, "reasoning": "Fallback"}
 
 # --- UI LOGIC ---
 def run_triage_simulation(dataset_name):
@@ -55,23 +70,37 @@ def run_triage_simulation(dataset_name):
     
     while obs is not None:
         patient_count += 1
-        ai_output = get_llama_decision(obs.patient_description, obs.vitals_bp, obs.vitals_hr)
+
+        # ✅ UPDATED FUNCTION CALL
+        ai_output = get_model_decision(
+            obs.patient_description,
+            obs.vitals_bp,
+            obs.vitals_hr
+        )
+
         level = ai_output.get("level", 3)
             
-        action = MedicalTriageAction(priority_level=level, reasoning=ai_output.get("reasoning", ""))
+        action = MedicalTriageAction(
+            priority_level=level,
+            reasoning=ai_output.get("reasoning", "")
+        )
         
-        # Capture environment data
-        next_obs, reward, done, info = env.step(action)
+        # ✅ FIXED STEP HANDLING
+        result = env.step(action)
+
+        next_obs = result.observation
+        reward = result.reward
+        done = result.done
+        info = result.info
+
         total_reward += reward
         
         actual_lvl = info.get('correct', '?')
         status = info.get('status', 'Standard')
         
-        # UI Formatting
         icon = "✅" if reward > 0 else "❌"
         if "CRITICAL" in status: icon = "🚨"
         
-        # Truncate description to keep UI clean
         short_desc = (obs.patient_description[:70] + '..') if len(obs.patient_description) > 70 else obs.patient_description
 
         log_entry = (
@@ -86,8 +115,6 @@ def run_triage_simulation(dataset_name):
             break
         obs = next_obs
 
-    # --- NORMALIZATION LOGIC ---
-    # Convert raw total (e.g. 2.5) to normalized score (e.g. 0.83)
     grading_score = max(0.0, total_reward / patient_count) if patient_count > 0 else 0.0
     final_display = round(grading_score, 2)
 
@@ -100,7 +127,7 @@ def run_triage_simulation(dataset_name):
         
     return "\n".join(results), f"GRADING SCORE: {final_display} | {verdict}"
 
-# --- GRADIO INTERFACE ---
+# --- GRADIO UI (UNCHANGED) ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
     

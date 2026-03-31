@@ -98,4 +98,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-print("BASE URL:", os.getenv("API_BASE_URL"))

@@ -10,15 +10,15 @@ from models import MedicalTriageAction
 app = FastAPI()
 
 # --- CONFIGURATION ---
-client = OpenAI(  # ✅ CHANGED
+client = OpenAI(  
     base_url=os.getenv("API_BASE_URL"),
     api_key=os.getenv("HF_TOKEN")
 )
 
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
-# --- MODEL INFERENCE (UPDATED) ---
-def get_model_decision(description, bp, hr):  # ✅ RENAMED
+# --- MODEL INFERENCE  ---
+def get_model_decision(description, bp, hr): 
     prompt = f"""
     Patient: {description}
     Vitals: BP {bp}, HR {hr}
@@ -71,7 +71,6 @@ def run_triage_simulation(dataset_name):
     while obs is not None:
         patient_count += 1
 
-        # ✅ UPDATED FUNCTION CALL
         ai_output = get_model_decision(
             obs.patient_description,
             obs.vitals_bp,
@@ -85,7 +84,6 @@ def run_triage_simulation(dataset_name):
             reasoning=ai_output.get("reasoning", "")
         )
         
-        # ✅ FIXED STEP HANDLING
         result = env.step(action)
 
         next_obs = result.observation
@@ -127,7 +125,7 @@ def run_triage_simulation(dataset_name):
         
     return "\n".join(results), f"GRADING SCORE: {final_display} | {verdict}"
 
-# --- GRADIO UI (UNCHANGED) ---
+# --- GRADIO UI ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🏥 Medical Triage AI Evaluation Dashboard")
     

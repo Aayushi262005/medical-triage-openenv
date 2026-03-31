@@ -17,6 +17,26 @@ client = OpenAI(
 
 env = MedicalTriageEnvironment(task_id="triage_basic")
 
+@app.post("/reset")
+def reset():
+    obs = env.reset()
+    return obs.dict() if obs else {}
+
+@app.post("/step")
+def step(action: MedicalTriageAction):
+    result = env.step(action)
+
+    return {
+        "observation": result.observation.dict() if result.observation else None,
+        "reward": result.reward,
+        "done": result.done,
+        "info": result.info
+    }
+
+@app.get("/state")
+def state():
+    return env.state().dict()
+
 # --- MODEL INFERENCE  ---
 def get_model_decision(description, bp, hr): 
     prompt = f"""

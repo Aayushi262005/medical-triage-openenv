@@ -37,6 +37,7 @@ def step(action: MedicalTriageAction):
 def state():
     return env.state().model_dump()
 
+    
 # --- MODEL INFERENCE  ---
 def get_model_decision(description, bp, hr): 
     prompt = f"""

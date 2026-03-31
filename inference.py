@@ -5,17 +5,14 @@ from openai import OpenAI
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
-# --- ENV VARIABLES (MANDATORY) ---
-API_BASE_URL = os.getenv("API_BASE_URL")
-HF_TOKEN = os.getenv("HF_TOKEN")
-MODEL_NAME = os.getenv("MODEL_NAME")
-
+# --- ENV VARIABLES ---
 client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=HF_TOKEN
+    base_url=os.getenv("API_BASE_URL"),
+    api_key=os.getenv("HF_TOKEN")
 )
 
-# --- CONFIG ---
+MODEL_NAME = os.getenv("MODEL_NAME")
+
 TASKS = ["triage_basic", "triage_vitals", "triage_emergency"]
 MAX_STEPS = 50
 
@@ -25,12 +22,12 @@ def get_model_action(prompt):
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
+            response_format={"type": "json_object"}
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
         print("Model error:", e)
-        return {"priority_level": 3, "reasoning": "Fallback decision"}
+        return {"priority_level": 3, "reasoning": "Fallback"}
 
 
 def run_task(task_id):
@@ -66,7 +63,6 @@ def run_task(task_id):
         )
 
         result = env.step(action)
-
         total_reward += result.reward
 
         if result.done:
@@ -74,7 +70,6 @@ def run_task(task_id):
 
         obs = result.observation
 
-    # Normalize score to 0–1
     score = max(0.0, min(1.0, (total_reward + 2) / 3))
     return score
 

@@ -1,6 +1,6 @@
 import json
 import os
-from models import MedicalTriageObservation, MedicalTriageAction, MedicalTriageState
+from models import MedicalTriageObservation, MedicalTriageAction, MedicalTriageState, StepResult  # ✅ added StepResult
 
 try:
     import openenv
@@ -44,6 +44,7 @@ class MedicalTriageEnvironment(BaseEnvironment):
         current_p = self.patients[self.state_data.current_patient_idx]
         correct_level = int(current_p["correct"])
         given_level = int(action.priority_level)
+
         reward = 0.0
         diff = abs(given_level - correct_level)
         status_msg = "Standard Triage"
@@ -63,11 +64,13 @@ class MedicalTriageEnvironment(BaseEnvironment):
         self._total_reward += reward
         self._steps += 1
         self.state_data.current_patient_idx += 1
+
         done = self.state_data.current_patient_idx >= len(self.patients)
         self.state_data.is_done = done
 
         max_possible = float(self._steps)
         grading_score = max(0.0, min(1.0, self._total_reward / max_possible)) if max_possible > 0 else 0.0
+
         observation = self._get_obs() if not done else None
         
         info = {
@@ -76,4 +79,10 @@ class MedicalTriageEnvironment(BaseEnvironment):
             "grading_score": grading_score,
             "step_reward": reward
         }
-        return observation, reward, done, info
+
+        return StepResult(
+            observation=observation,
+            reward=reward,
+            done=done,
+            info=info
+        )

@@ -6,9 +6,13 @@ from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
 # --- ENV VARIABLES ---
+API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME")
+
 client = OpenAI(
-    base_url=os.getenv("API_BASE_URL"),
-    api_key=os.getenv("HF_TOKEN")
+    base_url=API_BASE_URL,
+    api_key=API_KEY
 )
 
 MODEL_NAME = os.getenv("MODEL_NAME")
@@ -24,11 +28,14 @@ def get_model_action(prompt):
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
-        return json.loads(response.choices[0].message.content)
+        
+        text = response.choices[0].message.content
+        print("MODEL RESPONSE:", text)
+        return json.loads(text)
+
     except Exception as e:
         print("Model error:", e)
         return {"priority_level": 3, "reasoning": "Fallback"}
-
 
 def run_task(task_id):
     env = MedicalTriageEnvironment(task_id=task_id)
@@ -90,3 +97,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+print("BASE URL:", os.getenv("API_BASE_URL"))

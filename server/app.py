@@ -142,9 +142,9 @@ def run_triage_simulation(dataset_name):
     grading_score = grader.grade(episode_results)
     final_display = round(grading_score, 2)
 
-    if final_display >= 0.8:
+    if final_display >= 0.75:
         verdict = "🟢 EXCELLENT"
-    elif final_display >= 0.5:
+    elif final_display >= 0.4:
         verdict = "🟡 SAFE"
     else:
         verdict = "🔴 SAFETY ALERT"

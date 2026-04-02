@@ -1,20 +1,12 @@
 [
-  {
-    "desc": "28yo male 'just feels dizzy' but appears very pale and diaphoretic.",
-    "bp": "70/30",
-    "hr": 150,
-    "correct": 1
-  },
-  {
-    "desc": "80yo female with a mild urinary tract infection and slight confusion.",
-    "bp": "110/70",
-    "hr": 72,
-    "correct": 3
-  },
-  {
-    "desc": "35yo female with mild 'anxiety' and palpitations after coffee.",
-    "bp": "138/85",
-    "hr": 98,
-    "correct": 5
-  }
+  { "desc": "35yo male feeling dizzy and weak", "hr": 120, "bp": "90/60", "correct": 2 },
+  { "desc": "60yo female with mild chest discomfort", "hr": 110, "bp": "150/95", "correct": 2 },
+  { "desc": "45yo male with headache and nausea", "hr": 98, "bp": "180/110", "correct": 2 },
+  { "desc": "25yo female feeling anxious and short of breath", "hr": 130, "bp": "100/70", "correct": 3 },
+  { "desc": "50yo male with fatigue", "hr": 55, "bp": "85/60", "correct": 2 },
+  { "desc": "70yo female with confusion", "hr": 105, "bp": "95/65", "correct": 2 },
+  { "desc": "30yo male with mild fever", "hr": 102, "bp": "118/78", "correct": 3 },
+  { "desc": "65yo male with weakness", "hr": 115, "bp": "88/58", "correct": 1 },
+  { "desc": "40yo female with vomiting", "hr": 108, "bp": "92/60", "correct": 2 },
+  { "desc": "55yo male with headache", "hr": 95, "bp": "160/100", "correct": 3 }
 ]

@@ -1,20 +1,12 @@
 [
-  {
-    "desc": "65yo male complaining of sudden crushing chest pain and shortness of breath.",
-    "bp": "160/95",
-    "hr": 110,
-    "correct": 1
-  },
-  {
-    "desc": "22yo female with a 2-inch superficial laceration on the forearm, bleeding is controlled.",
-    "bp": "120/80",
-    "hr": 75,
-    "correct": 4
-  },
-  {
-    "desc": "45yo male with a high fever (103F) and productive cough for 3 days.",
-    "bp": "130/85",
-    "hr": 95,
-    "correct": 3
-  }
+  { "desc": "25yo male with mild headache after long screen time, no other symptoms", "hr": 72, "bp": "120/80", "correct": 5 },
+  { "desc": "30yo female with common cold symptoms, runny nose and mild fever", "hr": 78, "bp": "118/76", "correct": 5 },
+  { "desc": "40yo male with small superficial cut on finger, no bleeding now", "hr": 70, "bp": "122/82", "correct": 5 },
+  { "desc": "22yo female with mild sore throat for 2 days, no breathing issues", "hr": 75, "bp": "110/70", "correct": 5 },
+  { "desc": "35yo male with mild ankle sprain, able to walk with slight pain", "hr": 82, "bp": "124/84", "correct": 4 },
+  { "desc": "28yo female with low-grade fever and fatigue since morning", "hr": 88, "bp": "116/78", "correct": 4 },
+  { "desc": "50yo male with mild back pain after lifting heavy object", "hr": 80, "bp": "130/85", "correct": 4 },
+  { "desc": "18yo male with minor abrasion on knee after fall, no swelling", "hr": 76, "bp": "118/80", "correct": 5 },
+  { "desc": "60yo female with mild joint pain, chronic arthritis history", "hr": 72, "bp": "132/86", "correct": 4 },
+  { "desc": "45yo male with mild cough, no fever or breathing difficulty", "hr": 74, "bp": "120/80", "correct": 5 }
 ]

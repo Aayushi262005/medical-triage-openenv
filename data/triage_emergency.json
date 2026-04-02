@@ -1,20 +1,12 @@
 [
-  {
-    "desc": "30yo female, unresponsive after a motor vehicle accident, shallow respirations.",
-    "bp": "80/40",
-    "hr": 140,
-    "correct": 1
-  },
-  {
-    "desc": "50yo male with facial drooping and inability to speak, started 30 mins ago.",
-    "bp": "190/110",
-    "hr": 88,
-    "correct": 1
-  },
-  {
-    "desc": "19yo male with a severely deformed ankle after a fall, pulses are present.",
-    "bp": "135/88",
-    "hr": 105,
-    "correct": 2
-  }
+  { "desc": "30yo female, unresponsive after road accident, shallow breathing", "hr": 140, "bp": "80/50", "correct": 1 },
+  { "desc": "50yo male with facial drooping and slurred speech, onset 30 mins ago", "hr": 100, "bp": "170/100", "correct": 1 },
+  { "desc": "65yo male with severe chest pain radiating to left arm, sweating heavily", "hr": 120, "bp": "90/60", "correct": 1 },
+  { "desc": "22yo male with severe allergic reaction, swelling of lips and difficulty breathing", "hr": 130, "bp": "85/55", "correct": 1 },
+  { "desc": "70yo female found confused and unable to respond, unknown duration", "hr": 110, "bp": "95/60", "correct": 1 },
+  { "desc": "19yo male with deformed leg after fall, severe pain but conscious", "hr": 115, "bp": "110/70", "correct": 2 },
+  { "desc": "45yo female with severe abdominal pain and vomiting blood", "hr": 125, "bp": "88/58", "correct": 1 },
+  { "desc": "60yo male with difficulty breathing, history of COPD, oxygen low", "hr": 118, "bp": "100/65", "correct": 1 },
+  { "desc": "35yo female with high fever, confusion and rapid heart rate", "hr": 130, "bp": "90/60", "correct": 2 },
+  { "desc": "55yo male with sudden loss of vision in one eye, no pain", "hr": 85, "bp": "150/90", "correct": 2 }
 ]

@@ -137,7 +137,7 @@ def run_triage_simulation(dataset_name):
 
         obs = next_obs
 
-    # ✅ USE NEW GRADER
+    
     grader = MedicalTriageGrader()
     grading_score = grader.grade(episode_results)
     final_display = round(grading_score, 2)
@@ -158,7 +158,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     with gr.Row():
         with gr.Column(scale=1):
             dataset_dropdown = gr.Dropdown(
-                choices=["Basic Triage", "Emergency Cases", "Vitals Focus"],
+                choices=["Basic Triage", "Vitals Focus", "Emergency Cases"],
                 value="Basic Triage",
                 label="Select Test Scenario"
             )

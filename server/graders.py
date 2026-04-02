@@ -3,14 +3,6 @@ BaseGrader = getattr(openenv, "BaseGrader", object)
 
 class MedicalTriageGrader(BaseGrader):
     def grade(self, episode_results) -> float:
-        """
-        Structured grading:
-        - Accuracy (exact match)
-        - Partial correctness (±1 level)
-        - Penalize critical misses heavily
-        - Penalize over-triage mildly
-        """
-
         if not episode_results:
             return 0.0
 
@@ -33,11 +25,9 @@ class MedicalTriageGrader(BaseGrader):
                 if abs(predicted - actual) == 1:
                     partial += 1
 
-            # Critical miss (dangerous)
             if info.get("is_critical") and predicted > actual:
                 critical_miss += 1
 
-            # Over-triage (less severe)
             if predicted < actual:
                 over_triage += 1
 
@@ -48,9 +38,9 @@ class MedicalTriageGrader(BaseGrader):
 
         final_score = (
             0.6 * acc_score +
-            0.2 * partial_score -
-            0.35 * critical_penalty -
-            0.15 * over_penalty
+            0.25 * partial_score -
+            0.5 * critical_penalty -   # heavy penalty
+            0.05 * over_penalty        # light penalty
         )
 
         return float(max(0.0, min(1.0, final_score)))

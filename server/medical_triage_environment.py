@@ -52,27 +52,31 @@ class MedicalTriageEnvironment(BaseEnvironment):
 
         diff = abs(predicted_level - correct_level)
 
+        #  REWARD LOGIC 
         if diff == 0:
             reward = 1.0
         elif diff == 1:
-            reward = 0.6
+            reward = 0.7
         elif diff == 2:
-            reward = 0.2
+            reward = 0.4
         else:
-            reward = -0.2
+            reward = 0.1
 
         status_msg = "Standard"
 
+        # 🚨 Critical under-triage 
         if correct_level <= 2 and predicted_level >= 4:
             reward = -2.0
             status_msg = "CRITICAL_MISS"
 
+        # ⚠️ Over-triage (mild penalty, not destructive)
         elif correct_level >= 4 and predicted_level <= 2:
-            reward -= 0.3
+            reward = max(reward - 0.2, 0.0)
             status_msg = "OVER_TRIAGE"
 
+        # Slight penalty for large deviation
         if diff >= 3:
-            reward -= 0.2
+            reward = max(reward - 0.1, 0.0)
 
         self._steps += 1
         self.state_data.current_patient_idx += 1

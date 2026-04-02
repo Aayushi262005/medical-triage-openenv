@@ -7,7 +7,7 @@ from openai import OpenAI
 
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
-from graders import MedicalTriageGrader   # ✅ NEW
+from server.graders import MedicalTriageGrader
 
 app = FastAPI()
 

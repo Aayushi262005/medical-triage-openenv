@@ -1,115 +1,162 @@
 import os
 import json
+import argparse
 from openai import OpenAI
 
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-try:
-    client = OpenAI(
-        base_url=API_BASE_URL,
-        api_key=API_KEY if API_KEY else "dummy-key"
-    )
-except Exception as e:
-    print(f"[ERROR] Client init failed: {e}", flush=True)
-    client = None
-
-TASK_NAME = "medical_triage"
-MAX_STEPS = 50
-
-
-def get_model_action(prompt):
+client = None
+if HF_TOKEN:
     try:
-        # If no API key → skip model call
-        if not API_KEY or client is None:
-            return {"priority_level": 3, "reasoning": "No API fallback"}
-
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-
-        text = response.choices[0].message.content
-        return json.loads(text)
-
-    except Exception as e:
-        print(f"[WARN] Model failed: {e}", flush=True)
-        return {"priority_level": 3, "reasoning": "Fallback"}
+        client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    except Exception:
+        client = None
 
 
-def run_task(task_id):
-    try:
-        env = MedicalTriageEnvironment(task_id=task_id)
-        obs = env.reset()
-    except Exception as e:
-        print(f"[ERROR] Env failed: {e}", flush=True)
-        return 0.0
-
-    total_reward = 0.0
-    steps = 0
-
-    print(f"[START] task={task_id}", flush=True)
-
-    while obs is not None and steps < MAX_STEPS:
-        steps += 1
-
+def get_action(obs):
+ 
+    if client:
         try:
             prompt = f"""
-Patient: {obs.patient_description}
-Vitals: BP {obs.vitals_bp}, HR {obs.vitals_hr}
+Patient: {getattr(obs, 'patient_description', '')}
+Vitals: BP {getattr(obs, 'vitals_bp', '')}, HR {getattr(obs, 'vitals_hr', '')}
 
-Return ONLY JSON:
+Return JSON:
 {{
-    "priority_level": integer (1-5),
-    "reasoning": "short explanation"
+ "priority_level": 1-5,
+ "reasoning": "short"
 }}
 """
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            content = response.choices[0].message.content
+            return json.loads(content)
+
         except Exception:
-            prompt = "Return JSON with priority_level 1-5"
+            pass
 
-        model_output = get_model_action(prompt)
+    try:
+        text = str(getattr(obs, "patient_description", "")).lower()
 
-        level = model_output.get("priority_level", 3)
-        if not isinstance(level, int) or level < 1 or level > 5:
-            level = 3
-
-        action = MedicalTriageAction(
-            priority_level=level,
-            reasoning=model_output.get("reasoning", "")
-        )
-
+        hr_val = getattr(obs, "vitals_hr", 0)
         try:
-            result = env.step(action)
-        except Exception as e:
-            print(f"[ERROR] Step failed: {e}", flush=True)
-            break
+            hr = int(hr_val)
+        except Exception:
+            hr = 0
 
-        total_reward += result.reward
+        if "chest pain" in text or "unconscious" in text or hr > 140:
+            return {"priority_level": 1, "reasoning": "critical"}
+        elif "accident" in text or "bleeding" in text:
+            return {"priority_level": 2, "reasoning": "high risk"}
+        elif "fever" in text or "cold" in text:
+            return {"priority_level": 4, "reasoning": "mild"}
+        elif "checkup" in text:
+            return {"priority_level": 5, "reasoning": "routine"}
 
-        print(f"[STEP] step={steps} reward={float(result.reward)}", flush=True)
+    except Exception:
+        pass
 
-        if result.done:
-            break
-
-        obs = result.observation
-
-    score = max(0.01, min(0.99, (total_reward + 2) / 3))
-
-    print(f"[END] task={task_id} score={float(score)} steps={steps}", flush=True)
-
-    return score
+    return {"priority_level": 3, "reasoning": "fallback"}
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task-id", dest="task_id", type=str, default=os.getenv("TASK_ID", "triage_basic"))
+    parser.add_argument("--task_id", type=str, dest="task_id_alt", default=None)
+
+    args, _ = parser.parse_known_args()
+    task_name = args.task_id_alt if args.task_id_alt else args.task_id
+    env_name = "medical_triage"
+
+    rewards = []
+    steps = 0
+    success = False
+
+    print(f"[START] task={task_name} env={env_name} model={MODEL_NAME}", flush=True)
+
     try:
-        run_task("triage_basic")
+        env = MedicalTriageEnvironment(task_id=task_name)
+        obs = env.reset()
+
+        while obs is not None and steps < 50:
+            steps += 1
+
+            model_output = get_action(obs)
+
+            level = model_output.get("priority_level", 3)
+            if not isinstance(level, int) or not (1 <= level <= 5):
+                level = 3
+
+            error_msg = "null"
+
+            try:
+                action = MedicalTriageAction(
+                    priority_level=level,
+                    reasoning=str(model_output.get("reasoning", ""))
+                )
+
+                result = env.step(action)
+
+                reward = float(getattr(result, "reward", 0.0))
+                done = bool(getattr(result, "done", True))
+
+                if reward < -1:
+                    reward = -1.0
+                elif reward > 1:
+                    reward = 1.0
+
+                err = getattr(result, "last_action_error", None)
+                if err:
+                    error_msg = str(err)
+
+            except Exception as e:
+                reward = 0.0
+                done = True
+                error_msg = str(e)
+                result = None
+
+            rewards.append(f"{reward:.2f}")
+
+            action_str = f"priority({level})"
+
+            print(
+                f"[STEP] step={steps} action={action_str} reward={reward:.2f} done={str(done).lower()} error={error_msg}",
+                flush=True
+            )
+
+            if done:
+                if reward > 0:
+                    success = True
+                break
+
+            obs = getattr(result, "observation", None)
+
+        try:
+            env.close()
+        except Exception:
+            pass
+
     except Exception as e:
-        print(f"[FATAL] {e}", flush=True)
+        print(
+            f"[STEP] step={steps} action=none reward=0.00 done=true error={str(e)}",
+            flush=True
+        )
+
+    if not rewards:
+        rewards = ["0.00"]
+
+    print(
+        f"[END] success={str(success).lower()} steps={steps} rewards={','.join(rewards)}",
+        flush=True
+    )
 
 
 if __name__ == "__main__":

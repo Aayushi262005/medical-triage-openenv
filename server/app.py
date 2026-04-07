@@ -12,10 +12,15 @@ from server.graders import MedicalTriageGrader
 app = FastAPI()
 
 # --- CONFIGURATION ---
-client = OpenAI(
-    base_url=os.getenv("API_BASE_URL"),
-    api_key=os.getenv("HF_TOKEN")
-)
+_api_key = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+_api_base = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+
+client = None
+if _api_key:
+    try:
+        client = OpenAI(base_url=_api_base, api_key=_api_key)
+    except Exception:
+        client = None
 
 # --- MODEL INFERENCE ---
 def get_model_decision(description, bp, hr):
@@ -30,26 +35,42 @@ def get_model_decision(description, bp, hr):
     }}
     """
 
+    if client:
+        try:
+            response = client.chat.completions.create(
+                model=os.getenv("MODEL_NAME", "meta-llama/Meta-Llama-3-8B-Instruct"),
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+
+            res = json.loads(response.choices[0].message.content)
+
+            lvl = int(res.get("priority_level", 3))
+            lvl = max(1, min(5, lvl))
+
+            return {
+                "level": lvl,
+                "reasoning": res.get("reasoning", "")
+            }
+
+        except Exception as e:
+            print("Inference error:", e)
+
+    # Rule-based fallback when no LLM client
+    text = str(description).lower()
     try:
-        response = client.chat.completions.create(
-            model=os.getenv("MODEL_NAME"),
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-
-        res = json.loads(response.choices[0].message.content)
-
-        lvl = int(res.get("priority_level", 3))
-        lvl = max(1, min(5, lvl))
-
-        return {
-            "level": lvl,
-            "reasoning": res.get("reasoning", "")
-        }
-
-    except Exception as e:
-        print("Inference error:", e)
-        return {"level": 3, "reasoning": "Fallback"}
+        hr_int = int(str(hr))
+    except Exception:
+        hr_int = 0
+    if "chest" in text or "unconscious" in text or hr_int > 140:
+        return {"level": 1, "reasoning": "critical – rule-based"}
+    elif "bleeding" in text or "accident" in text:
+        return {"level": 2, "reasoning": "high risk – rule-based"}
+    elif "fever" in text or "cold" in text:
+        return {"level": 4, "reasoning": "mild – rule-based"}
+    elif "checkup" in text:
+        return {"level": 5, "reasoning": "routine – rule-based"}
+    return {"level": 3, "reasoning": "standard – rule-based"}
 
 env = MedicalTriageEnvironment(task_id="triage_basic")
 

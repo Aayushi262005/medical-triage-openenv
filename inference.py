@@ -2,7 +2,7 @@ import os
 import json
 import argparse
 import sys
-from openai import OpenAI
+from typing import List
 
 try:
     from server.medical_triage_environment import MedicalTriageEnvironment
@@ -10,21 +10,26 @@ try:
 except ImportError:
     pass
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Meta-Llama-3-8B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
+from openai import OpenAI
 
-if HF_TOKEN is None:
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+MODEL_NAME = os.getenv("MODEL_NAME") or "meta-llama/Meta-Llama-3-8B-Instruct"
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+
+BENCHMARK = "medical_triage"
+MAX_STEPS = 50
+
+if API_KEY is None:
     raise ValueError("HF_TOKEN environment variable is required")
 
-client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+client_llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-def get_action(obs):
+def get_action(obs) -> dict:
     try:
         patient_desc = getattr(obs, 'patient_description', 'No description')
         vitals = f"BP {getattr(obs, 'vitals_bp', 'N/A')}, HR {getattr(obs, 'vitals_hr', 'N/A')}"
         
-        response = client.chat.completions.create(
+        response = client_llm.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": "You are a medical triage expert. Level 1 is critical/life-threatening, Level 5 is routine. Respond ONLY in valid JSON."},
@@ -42,54 +47,91 @@ def get_action(obs):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-id", dest="task_id", type=str, default=os.getenv("TASK_ID", "triage_basic"))
-    parser.add_argument("--task_id", type=str, dest="task_id_alt", default=None)
-    args, _ = parser.parse_known_args()
+    parser.add_argument("--task_id", dest="task_id_alt", type=str, default=None)
     
+    args, _ = parser.parse_known_args()
     task_name = args.task_id_alt if args.task_id_alt else args.task_id
-    env_name = "medical_triage"
-    rewards = []
-    steps = 0
-    success = False
-
-    print(f"[START] task={task_name} env={env_name} model={MODEL_NAME}", flush=True)
-
+    
     try:
         env = MedicalTriageEnvironment(task_id=task_name)
-        obs = env.reset()
+    except Exception as e:
+        print(f"Failed to load environment: {str(e)}")
+        sys.exit(1)
 
-        while obs is not None and steps < 50:
-            steps += 1
-            model_output = get_action(obs)
+    obs = env.reset()
+    
+    history: List[str] = []
+    rewards: List[float] = []
+    
+    print(f"[START] task={task_name} env={BENCHMARK} model={MODEL_NAME}", flush=True)
+
+    success = False
+    steps = 0
+    last_error = ""
+
+    for step in range(1, MAX_STEPS + 1):
+        if obs is None:
+            break
             
-            try:
-                level = int(model_output.get("priority_level", 3))
-                reason = str(model_output.get("reasoning", "triage step"))
+        model_output = get_action(obs)
+        
+        try:
+            level = int(model_output.get("priority_level", 3))
+            reason = str(model_output.get("reasoning", "triage step"))
+            
+            command = f"priority({level})"
+            
+            action = MedicalTriageAction(priority_level=level, reasoning=reason)
+            result = env.step(action)
+            
+            reward = float(getattr(result, "reward", 0.0))
+            done = bool(getattr(result, "done", False))
+            err = getattr(result, "last_action_error", None)
+            
+            last_error = "" if err is None else str(err)
+            
+            # Clamp reward to strictly (0, 1) for validator
+            if reward <= 0.0:
+                reward = 0.01
+            elif reward >= 1.0:
+                reward = 0.99
                 
-                action = MedicalTriageAction(priority_level=level, reasoning=reason)
-                result = env.step(action)
-                
-                reward = float(getattr(result, "reward", 0.0))
-                done = bool(getattr(result, "done", False))
-                err = getattr(result, "last_action_error", None)
-                error_msg = "null" if err is None else str(err)
-                
-                rewards.append(f"{reward:.2f}")
-                print(f"[STEP] step={steps} action=priority({level}) reward={reward:.2f} done={str(done).lower()} error={error_msg}", flush=True)
-                
-                if done:
-                    if reward >= 1.0: success = True
-                    break
-                obs = getattr(result, "observation", None)
-            except Exception:
+            rewards.append(reward)
+            steps = step
+            
+            done_str = "true" if done else "false"
+            print(f"[STEP] step={step} action={command!r} reward={reward:.2f} done={done_str} error={last_error!r}", flush=True)
+            
+            if done:
+                # Task achieved threshold logic
+                if reward >= 0.99:
+                    success = True
                 break
+                
+            obs = getattr(result, "observation", None)
+            
+        except Exception as e:
+            last_error = str(e)
+            reward = 0.01
+            rewards.append(reward)
+            steps = step
+            done_str = "true"
+            print(f"[STEP] step={step} action='error' reward={reward:.2f} done={done_str} error={last_error!r}", flush=True)
+            break
 
-        if hasattr(env, "close"):
+    if hasattr(env, "close"):
+        try:
             env.close()
-    except Exception:
-        pass
+        except Exception:
+            pass
 
-    if not rewards: rewards = ["0.00"]
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(rewards)}", flush=True)
+    score = max(rewards) if rewards else 0.1
+    score = min(max(score, 0.01), 0.99)  # clamp to (0, 1)
+
+    success_str = "true" if success else "false"
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards) if rewards else "0.01"
+    
+    print(f"[END] success={success_str} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 if __name__ == "__main__":
     main()

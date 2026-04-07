@@ -40,10 +40,6 @@ def get_action(obs):
         return {"priority_level": 3, "reasoning": "stable/standard"}
 
 def main():
-    if hasattr(main, "_has_run"):
-        return
-    main._has_run = True
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-id", dest="task_id", type=str, default=os.getenv("TASK_ID", "triage_basic"))
     parser.add_argument("--task_id", type=str, dest="task_id_alt", default=None)
@@ -94,7 +90,6 @@ def main():
 
     if not rewards: rewards = ["0.00"]
     print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(rewards)}", flush=True)
-    os._exit(0)
 
 if __name__ == "__main__":
     main()

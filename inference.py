@@ -98,7 +98,7 @@ Return ONLY JSON:
 
         obs = result.observation
 
-    score = max(0.0, min(1.0, (total_reward + 2) / 3))
+    score = max(0.01, min(0.99, (total_reward + 2) / 3))
 
     print(f"[END] task={task_id} score={float(score)} steps={steps}", flush=True)
 

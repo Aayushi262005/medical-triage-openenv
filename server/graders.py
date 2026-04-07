@@ -4,7 +4,7 @@ BaseGrader = getattr(openenv, "BaseGrader", object)
 class MedicalTriageGrader(BaseGrader):
     def grade(self, episode_results) -> float:
         if not episode_results:
-            return 0.0
+            return 0.01
 
         total_cases = len(episode_results)
 
@@ -43,4 +43,4 @@ class MedicalTriageGrader(BaseGrader):
             0.05 * over_penalty        # light penalty
         )
 
-        return float(max(0.0, min(1.0, final_score)))
+        return float(max(0.01, min(0.99, final_score)))

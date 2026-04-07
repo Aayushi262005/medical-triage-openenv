@@ -17,9 +17,8 @@ if HF_TOKEN:
     except Exception:
         client = None
 
-
 def get_action(obs):
- 
+   
     if client:
         try:
             prompt = f"""
@@ -36,10 +35,7 @@ Return JSON:
                 model=MODEL_NAME,
                 messages=[{"role": "user", "content": prompt}]
             )
-
-            content = response.choices[0].message.content
-            return json.loads(content)
-
+            return json.loads(response.choices[0].message.content)
         except Exception:
             pass
 
@@ -60,12 +56,10 @@ Return JSON:
             return {"priority_level": 4, "reasoning": "mild"}
         elif "checkup" in text:
             return {"priority_level": 5, "reasoning": "routine"}
-
     except Exception:
         pass
 
     return {"priority_level": 3, "reasoning": "fallback"}
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -108,10 +102,7 @@ def main():
                 reward = float(getattr(result, "reward", 0.0))
                 done = bool(getattr(result, "done", True))
 
-                if reward < -1:
-                    reward = -1.0
-                elif reward > 1:
-                    reward = 1.0
+                reward = max(0.0, min(1.0, reward))
 
                 err = getattr(result, "last_action_error", None)
                 if err:
@@ -133,7 +124,7 @@ def main():
             )
 
             if done:
-                if reward > 0:
+                if reward >= 1.0:
                     success = True
                 break
 
@@ -150,8 +141,14 @@ def main():
             flush=True
         )
 
+
     if not rewards:
         rewards = ["0.00"]
+
+    rewards = [f"{float(r):.2f}" for r in rewards]
+
+    if success:
+        rewards[-1] = "1.00"
 
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={','.join(rewards)}",

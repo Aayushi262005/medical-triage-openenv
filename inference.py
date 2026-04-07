@@ -23,19 +23,21 @@ def get_action(obs):
     try:
         patient_desc = getattr(obs, 'patient_description', 'No description')
         vitals = f"BP {getattr(obs, 'vitals_bp', 'N/A')}, HR {getattr(obs, 'vitals_hr', 'N/A')}"
-        prompt = f"Patient: {patient_desc}\nVitals: {vitals}\nReturn JSON: {{\"priority_level\": 1-5, \"reasoning\": \"short\"}}"
         
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": "You are a medical triage expert. Level 1 is critical/life-threatening, Level 5 is routine. Respond ONLY in valid JSON."},
+                {"role": "user", "content": f"Triage this patient:\n{patient_desc}\nVitals: {vitals}\n\nReturn JSON format: {{\"priority_level\": int, \"reasoning\": \"string\"}}"}
+            ],
             response_format={"type": "json_object"}
         )
         return json.loads(response.choices[0].message.content)
     except Exception:
         text = str(getattr(obs, "patient_description", "")).lower()
-        if "chest pain" in text or "unconscious" in text:
-            return {"priority_level": 1, "reasoning": "emergency"}
-        return {"priority_level": 3, "reasoning": "stable"}
+        if any(w in text for w in ["chest", "breath", "unconscious", "stroke", "bleeding"]):
+            return {"priority_level": 1, "reasoning": "emergency detected"}
+        return {"priority_level": 3, "reasoning": "stable/standard"}
 
 def main():
     if hasattr(main, "_has_run"):
@@ -44,9 +46,10 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-id", dest="task_id", type=str, default=os.getenv("TASK_ID", "triage_basic"))
+    parser.add_argument("--task_id", type=str, dest="task_id_alt", default=None)
     args, _ = parser.parse_known_args()
     
-    task_name = args.task_id
+    task_name = args.task_id_alt if args.task_id_alt else args.task_id
     env_name = "medical_triage"
     rewards = []
     steps = 0
@@ -61,10 +64,11 @@ def main():
         while obs is not None and steps < 50:
             steps += 1
             model_output = get_action(obs)
-            level = int(model_output.get("priority_level", 3))
-            reason = str(model_output.get("reasoning", "triage"))
-
+            
             try:
+                level = int(model_output.get("priority_level", 3))
+                reason = str(model_output.get("reasoning", "triage step"))
+                
                 action = MedicalTriageAction(priority_level=level, reasoning=reason)
                 result = env.step(action)
                 
@@ -80,12 +84,11 @@ def main():
                     if reward >= 1.0: success = True
                     break
                 obs = getattr(result, "observation", None)
-            except Exception as e:
+            except Exception:
                 break
 
         if hasattr(env, "close"):
             env.close()
-
     except Exception:
         pass
 

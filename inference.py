@@ -14,37 +14,28 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Meta-Llama-3-8B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-client = None
-if HF_TOKEN:
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
+
+client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 def get_action(obs):
-    if client:
-        try:
-            patient_desc = getattr(obs, 'patient_description', 'No description')
-            vitals = f"BP {getattr(obs, 'vitals_bp', 'N/A')}, HR {getattr(obs, 'vitals_hr', 'N/A')}"
-            prompt = f"Patient: {patient_desc}\nVitals: {vitals}\nReturn JSON: {{\"priority_level\": 1-5, \"reasoning\": \"short\"}}"
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": prompt}],
-                response_format={ "type": "json_object" }
-            )
-            return json.loads(response.choices[0].message.content)
-        except Exception:
-            pass
-
-    text = str(getattr(obs, "patient_description", "")).lower()
-    hr = 0
     try:
-        hr = int(getattr(obs, "vitals_hr", 0))
-    except:
-        pass
-
-    if "chest pain" in text or "unconscious" in text or hr > 140:
-        return {"priority_level": 1, "reasoning": "critical"}
-    elif "accident" in text or "bleeding" in text:
-        return {"priority_level": 2, "reasoning": "high risk"}
-    return {"priority_level": 3, "reasoning": "stable"}
+        patient_desc = getattr(obs, 'patient_description', 'No description')
+        vitals = f"BP {getattr(obs, 'vitals_bp', 'N/A')}, HR {getattr(obs, 'vitals_hr', 'N/A')}"
+        prompt = f"Patient: {patient_desc}\nVitals: {vitals}\nReturn JSON: {{\"priority_level\": 1-5, \"reasoning\": \"short\"}}"
+        
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception:
+        text = str(getattr(obs, "patient_description", "")).lower()
+        if "chest pain" in text or "unconscious" in text:
+            return {"priority_level": 1, "reasoning": "emergency"}
+        return {"priority_level": 3, "reasoning": "stable"}
 
 def main():
     if hasattr(main, "_has_run"):
@@ -70,27 +61,33 @@ def main():
         while obs is not None and steps < 50:
             steps += 1
             model_output = get_action(obs)
-            level = model_output.get("priority_level", 3)
-            reason = str(model_output.get("reasoning", "automatic triage"))
+            level = int(model_output.get("priority_level", 3))
+            reason = str(model_output.get("reasoning", "triage"))
 
             try:
-                action = MedicalTriageAction(priority_level=int(level), reasoning=reason)
+                action = MedicalTriageAction(priority_level=level, reasoning=reason)
                 result = env.step(action)
+                
                 reward = float(getattr(result, "reward", 0.0))
                 done = bool(getattr(result, "done", False))
-                error_msg = str(getattr(result, "last_action_error", "null"))
+                err = getattr(result, "last_action_error", None)
+                error_msg = "null" if err is None else str(err)
+                
                 rewards.append(f"{reward:.2f}")
                 print(f"[STEP] step={steps} action=priority({level}) reward={reward:.2f} done={str(done).lower()} error={error_msg}", flush=True)
+                
                 if done:
                     if reward >= 1.0: success = True
                     break
                 obs = getattr(result, "observation", None)
             except Exception as e:
-                print(f"[STEP] step={steps} error={str(e)}", flush=True)
                 break
-        env.close()
-    except Exception as e:
-        print(f"[ERROR] {str(e)}", flush=True)
+
+        if hasattr(env, "close"):
+            env.close()
+
+    except Exception:
+        pass
 
     if not rewards: rewards = ["0.00"]
     print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(rewards)}", flush=True)

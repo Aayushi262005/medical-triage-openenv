@@ -1,11 +1,15 @@
 import os
 import json
 import argparse
+import sys
 from openai import OpenAI
 
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
+# =========================
+# ENV VARIABLES
+# =========================
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -18,7 +22,6 @@ if HF_TOKEN:
         client = None
 
 def get_action(obs):
-   
     if client:
         try:
             prompt = f"""
@@ -41,7 +44,6 @@ Return JSON:
 
     try:
         text = str(getattr(obs, "patient_description", "")).lower()
-
         hr_val = getattr(obs, "vitals_hr", 0)
         try:
             hr = int(hr_val)
@@ -61,7 +63,13 @@ Return JSON:
 
     return {"priority_level": 3, "reasoning": "fallback"}
 
+
 def main():
+
+    if getattr(main, "_has_run", False):
+        return
+    main._has_run = True
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-id", dest="task_id", type=str, default=os.getenv("TASK_ID", "triage_basic"))
     parser.add_argument("--task_id", type=str, dest="task_id_alt", default=None)
@@ -141,7 +149,6 @@ def main():
             flush=True
         )
 
-
     if not rewards:
         rewards = ["0.00"]
 
@@ -155,6 +162,7 @@ def main():
         flush=True
     )
 
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

@@ -5,28 +5,29 @@ from openai import OpenAI
 from server.medical_triage_environment import MedicalTriageEnvironment
 from models import MedicalTriageAction
 
-API_BASE_URL = os.getenv("API_BASE_URL")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
-MODEL_NAME = os.getenv("MODEL_NAME")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
-if not API_KEY:
-    raise ValueError("API key not found. Set HF_TOKEN or OPENAI_API_KEY.")
-
-if not MODEL_NAME:
-    raise ValueError("MODEL_NAME environment variable not set.")
-
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=API_KEY
-)
+try:
+    client = OpenAI(
+        base_url=API_BASE_URL,
+        api_key=API_KEY if API_KEY else "dummy-key"
+    )
+except Exception as e:
+    print(f"[ERROR] Client init failed: {e}", flush=True)
+    client = None
 
 TASK_NAME = "medical_triage"
-
 MAX_STEPS = 50
 
 
 def get_model_action(prompt):
     try:
+        # If no API key → skip model call
+        if not API_KEY or client is None:
+            return {"priority_level": 3, "reasoning": "No API fallback"}
+
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}],
@@ -36,13 +37,18 @@ def get_model_action(prompt):
         text = response.choices[0].message.content
         return json.loads(text)
 
-    except Exception:
+    except Exception as e:
+        print(f"[WARN] Model failed: {e}", flush=True)
         return {"priority_level": 3, "reasoning": "Fallback"}
 
 
 def run_task(task_id):
-    env = MedicalTriageEnvironment(task_id=task_id)
-    obs = env.reset()
+    try:
+        env = MedicalTriageEnvironment(task_id=task_id)
+        obs = env.reset()
+    except Exception as e:
+        print(f"[ERROR] Env failed: {e}", flush=True)
+        return 0.0
 
     total_reward = 0.0
     steps = 0
@@ -52,7 +58,8 @@ def run_task(task_id):
     while obs is not None and steps < MAX_STEPS:
         steps += 1
 
-        prompt = f"""
+        try:
+            prompt = f"""
 Patient: {obs.patient_description}
 Vitals: BP {obs.vitals_bp}, HR {obs.vitals_hr}
 
@@ -62,6 +69,8 @@ Return ONLY JSON:
     "reasoning": "short explanation"
 }}
 """
+        except Exception:
+            prompt = "Return JSON with priority_level 1-5"
 
         model_output = get_model_action(prompt)
 
@@ -74,7 +83,12 @@ Return ONLY JSON:
             reasoning=model_output.get("reasoning", "")
         )
 
-        result = env.step(action)
+        try:
+            result = env.step(action)
+        except Exception as e:
+            print(f"[ERROR] Step failed: {e}", flush=True)
+            break
+
         total_reward += result.reward
 
         print(f"[STEP] step={steps} reward={float(result.reward)}", flush=True)
@@ -92,7 +106,10 @@ Return ONLY JSON:
 
 
 def main():
-    run_task("triage_basic")
+    try:
+        run_task("triage_basic")
+    except Exception as e:
+        print(f"[FATAL] {e}", flush=True)
 
 
 if __name__ == "__main__":

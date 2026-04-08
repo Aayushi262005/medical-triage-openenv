@@ -6,20 +6,20 @@ entry_point: "medical_triage.server.medical_triage_environment:MedicalTriageEnvi
 env_type: "medical"
 
 tasks:
-  - task_id: "triage_basic"
+  - id: "triage_basic"
     name: "Basic Triage"
     difficulty: "easy"
     description: "Standard cases with clear physical symptoms."
-    grader: "medical_triage.server.graders:MedicalTriageGrader"
+    grader: "tasks.graders:MedicalTriageGrader"
 
-  - task_id: "triage_vitals"
+  - id: "triage_vitals"
     name: "Vitals-Based Triage"
     difficulty: "medium"
     description: "Requires interpreting Heart Rate and Blood Pressure data."
-    grader: "medical_triage.server.graders:MedicalTriageGrader"
+    grader: "tasks.graders:MedicalTriageGrader"
 
-  - task_id: "triage_emergency"
+  - id: "triage_emergency"
     name: "Critical Care Triage"
     difficulty: "hard"
     description: "High-stakes scenarios with potential safety penalties."
-    grader: "medical_triage.server.graders:MedicalTriageGrader"
+    grader: "tasks.graders:MedicalTriageGrader"

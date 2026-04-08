@@ -27,12 +27,12 @@ client_llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 
 def clamp_reward(reward: float) -> float:
-    """Ensure reward is strictly between 0.01 and 0.99"""
+    """Ensure reward is strictly between 0.05 and 0.95"""
     if reward <= 0.0:
-        return 0.01
+        return 0.1
     if reward >= 1.0:
-        return 0.99
-    return round(reward, 2)
+        return 0.9
+    return round(float(min(max(reward, 0.05), 0.95)), 2)
 
 
 def get_action(obs) -> dict:

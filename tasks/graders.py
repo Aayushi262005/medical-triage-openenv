@@ -7,7 +7,7 @@ except (ImportError, AttributeError):
 class MedicalTriageGrader(BaseGrader):
     def grade(self, episode_results) -> float:
         if not episode_results:
-            return 0.01
+            return 0.1
 
         total_cases = len(episode_results)
         
@@ -51,14 +51,13 @@ class MedicalTriageGrader(BaseGrader):
             )
         else:
             # Fallback to rewards if metadata is missing
-            rewards = [getattr(step, "reward", 0.01) for step in episode_results]
-            avg_reward = sum(rewards) / len(rewards) if rewards else 0.01
-            final_score = avg_reward if avg_reward > 0 else 0.01
+            rewards = [getattr(step, "reward", 0.1) for step in episode_results]
+            avg_reward = sum(rewards) / len(rewards) if rewards else 0.1
+            final_score = avg_reward if avg_reward > 0 else 0.1
 
-        # STRICT RANGE ENFORCEMENT (clamped between 0.01 and 0.99)
-        # Using 0.01 and 0.99 ensures we are strictly between 0 and 1
+        # AGGRESSIVE RANGE ENFORCEMENT (clamped between 0.05 and 0.95)
+        # This ensures we are safely away from 0.0 and 1.0 even with rounding
         raw_score = float(final_score)
-        clamped_score = min(max(raw_score, 0.01), 0.99)
+        clamped_score = min(max(raw_score, 0.05), 0.95)
         
-        # Consistent rounding to 2 decimal places as in inference.py
         return round(float(clamped_score), 2)

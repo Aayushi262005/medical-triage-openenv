@@ -51,6 +51,8 @@ class MedicalTriageEnvironment(BaseEnvironment):
         predicted_level = int(action.priority_level)
 
         diff = abs(predicted_level - correct_level)
+
+        # ✅ SAFE REWARD (STRICTLY BETWEEN 0.01–0.99)
         if diff == 0:
             reward = 0.99
         elif diff == 1:
@@ -62,17 +64,21 @@ class MedicalTriageEnvironment(BaseEnvironment):
 
         status_msg = "Standard"
 
+        # 🚨 Critical under-triage
         if correct_level <= 2 and predicted_level >= 4:
             reward = 0.01
             status_msg = "CRITICAL_MISS"
 
+        # ⚠️ Over-triage
         elif correct_level >= 4 and predicted_level <= 2:
             reward = max(reward - 0.1, 0.01)
             status_msg = "OVER_TRIAGE"
 
+        # slight penalty for large deviation
         if diff >= 3:
             reward = max(reward - 0.05, 0.01)
 
+        # FINAL CLAMP
         reward = max(0.01, min(0.99, reward))
 
         self._steps += 1

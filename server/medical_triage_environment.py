@@ -22,6 +22,13 @@ class MedicalTriageEnvironment(BaseEnvironment):
 
         self._steps = 0
 
+    def get_tasks(self):
+        return [
+            {"task_id": "triage_basic"},
+            {"task_id": "triage_vitals"},
+            {"task_id": "triage_emergency"}
+        ]
+
     def state(self) -> MedicalTriageState:
         return self.state_data
 
@@ -52,7 +59,7 @@ class MedicalTriageEnvironment(BaseEnvironment):
 
         diff = abs(predicted_level - correct_level)
 
-        # ✅ SAFE REWARD (STRICTLY BETWEEN 0.01–0.99)
+        #  SAFE REWARD (STRICTLY BETWEEN 0.01–0.99)
         if diff == 0:
             reward = 0.99
         elif diff == 1:
@@ -78,7 +85,7 @@ class MedicalTriageEnvironment(BaseEnvironment):
         if diff >= 3:
             reward = max(reward - 0.05, 0.01)
 
-        # FINAL CLAMP
+        # FINAL CLAMP (STRICT RANGE)
         reward = max(0.01, min(0.99, reward))
 
         self._steps += 1

@@ -62,4 +62,4 @@ class MedicalTriageGrader(BaseGrader):
         elif final_score >= 1.0:
             final_score = 0.99
 
-        return final_score
+        return float(min(0.99, max(0.01, final_score or 0.5)))

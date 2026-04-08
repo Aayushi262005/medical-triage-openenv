@@ -60,4 +60,5 @@ class MedicalTriageGrader(BaseGrader):
         raw_score = float(final_score)
         clamped_score = min(max(raw_score, 0.01), 0.99)
         
-        return round(float(clamped_score), 3)
+        # Consistent rounding to 2 decimal places as in inference.py
+        return round(float(clamped_score), 2)

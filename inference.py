@@ -6,7 +6,7 @@ from typing import List
 
 try:
     from server.medical_triage_environment import MedicalTriageEnvironment
-    from models import MedicalTriageAction
+    from server.models import MedicalTriageAction
 except ImportError:
     pass
 

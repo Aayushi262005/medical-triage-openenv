@@ -1,6 +1,6 @@
 import json
 import os
-from ..models import MedicalTriageObservation, MedicalTriageAction, MedicalTriageState, StepResult
+from .models import MedicalTriageObservation, MedicalTriageAction, MedicalTriageState, StepResult
 
 try:
     import openenv

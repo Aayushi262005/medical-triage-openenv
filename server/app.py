@@ -5,9 +5,9 @@ import json
 import os
 from openai import OpenAI
 
-from server.medical_triage_environment import MedicalTriageEnvironment
-from models import MedicalTriageAction
-from server.graders import MedicalTriageGrader
+from .medical_triage_environment import MedicalTriageEnvironment
+from ..models import MedicalTriageAction
+from .graders import MedicalTriageGrader
 
 app = FastAPI()
 

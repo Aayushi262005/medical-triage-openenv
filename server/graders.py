@@ -54,10 +54,12 @@ class MedicalTriageGrader(BaseGrader):
             avg_reward = sum(rewards) / len(rewards) if rewards else 0.01
             final_score = avg_reward if avg_reward > 0 else 0.01
 
-        # STRICT RANGE ENFORCEMENT
+        final_score = float(round(final_score, 4))
+
+        # STRICT RANGE ENFORCEMENT (clamped after rounding to avoid 0.0 or 1.0)
         if final_score <= 0.0:
             final_score = 0.01
         elif final_score >= 1.0:
             final_score = 0.99
 
-        return float(round(final_score, 4))
+        return final_score
